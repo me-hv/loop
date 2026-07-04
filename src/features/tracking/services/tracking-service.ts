@@ -9,7 +9,8 @@ import {
   query,
   where,
 } from 'firebase/firestore'
-import { firebaseDb, firebaseAuth } from '@/lib/firebase/client'
+import { firebaseDb } from '@/lib/firebase/client'
+import { runWithFirestoreLogger } from '@/lib/firebase/logger'
 import { HabitCompletion } from '../types'
 
 // Date helper: YYYY-MM-DD
@@ -33,10 +34,8 @@ export function calculateStreakFromDates(
 ): { currentStreak: number; longestStreak: number } {
   if (dates.length === 0) return { currentStreak: 0, longestStreak: 0 }
 
-  // Deduplicate and sort dates ascending
   const sortedUniqueDates = Array.from(new Set(dates)).sort()
 
-  // Calculate longest streak
   let maxStreak = 0
   let currentRun = 0
   let prevTime: number | null = null
@@ -59,7 +58,6 @@ export function calculateStreakFromDates(
     prevTime = currentTime
   }
 
-  // Calculate current streak (backwards from today or yesterday)
   let currentStreak = 0
   const hasToday = sortedUniqueDates.includes(todayStr)
   const yesterdayStr = getYesterdayDateString(todayStr)
@@ -84,7 +82,6 @@ export const trackingService = {
     return !!firebaseDb
   },
 
-  // 1. Create a completion record
   async createCompletion(
     userId: string,
     habitId: string,
@@ -96,28 +93,26 @@ export const trackingService = {
       throw new Error('Firebase Firestore is not initialized.')
     }
 
-    const currentUserUid = firebaseAuth?.currentUser?.uid || 'Not Authenticated'
-
-    // Gating future dates
     const todayStr = getLocalDateString()
     if (date > todayStr) {
       throw new Error('Cannot log completions for future dates.')
     }
 
-    console.log('[FIRESTORE OPERATION] Type: getDocs (Query), Collection: habitCompletions, Query: habitId == ' + habitId + ', date == ' + date + ', AuthUID: ' + currentUserUid);
-    
-    let existing;
-    try {
-      const q = query(
-        collection(firebaseDb!, 'habitCompletions'),
-        where('habitId', '==', habitId),
-        where('date', '==', date)
-      )
-      existing = await getDocs(q)
-    } catch (e) {
-      console.error('[FIRESTORE FAILURE] Operation: getDocs (Query), Collection: habitCompletions, Query: habitId == ' + habitId + ', date == ' + date + ', AuthUID: ' + currentUserUid, e);
-      throw e;
-    }
+    const q = query(
+      collection(firebaseDb!, 'habitCompletions'),
+      where('userId', '==', userId), // Fixed query security constraint
+      where('habitId', '==', habitId),
+      where('date', '==', date)
+    )
+
+    const existing = await runWithFirestoreLogger(
+      {
+        operation: 'getDocs',
+        collection: 'habitCompletions',
+        queryConstraints: `userId == ${userId}, habitId == ${habitId}, date == ${date}`,
+      },
+      () => getDocs(q)
+    )
 
     if (!existing.empty) {
       throw new Error('Habit already completed for this date.')
@@ -134,17 +129,15 @@ export const trackingService = {
       createdAt: new Date().toISOString(),
     }
 
-    console.log('[FIRESTORE OPERATION] Type: addDoc, Collection: habitCompletions, Payload: ', JSON.stringify(newCompletion), ', AuthUID: ', currentUserUid);
+    const docRef = await runWithFirestoreLogger(
+      {
+        operation: 'addDoc',
+        collection: 'habitCompletions',
+        payload: newCompletion,
+      },
+      () => addDoc(collection(firebaseDb!, 'habitCompletions'), newCompletion)
+    )
 
-    let docRef;
-    try {
-      docRef = await addDoc(collection(firebaseDb!, 'habitCompletions'), newCompletion)
-    } catch (e) {
-      console.error('[FIRESTORE FAILURE] Operation: addDoc, Collection: habitCompletions, Payload: ', JSON.stringify(newCompletion), ', AuthUID: ', currentUserUid, e);
-      throw e;
-    }
-
-    // Update aggregate stats on habit
     await this.updateHabitStats(userId, habitId, todayStr)
 
     return {
@@ -153,41 +146,38 @@ export const trackingService = {
     }
   },
 
-  // 2. Remove a completion record (Undo)
   async removeCompletion(userId: string, habitId: string, date: string): Promise<void> {
     if (!this.isInitialized()) {
       throw new Error('Firebase Firestore is not initialized.')
     }
 
-    const currentUserUid = firebaseAuth?.currentUser?.uid || 'Not Authenticated'
-    console.log('[FIRESTORE OPERATION] Type: getDocs (Query), Collection: habitCompletions, Query: userId == ' + userId + ', habitId == ' + habitId + ', date == ' + date + ', AuthUID: ' + currentUserUid);
+    const q = query(
+      collection(firebaseDb!, 'habitCompletions'),
+      where('userId', '==', userId),
+      where('habitId', '==', habitId),
+      where('date', '==', date)
+    )
 
-    let snapshot;
-    try {
-      const q = query(
-        collection(firebaseDb!, 'habitCompletions'),
-        where('userId', '==', userId),
-        where('habitId', '==', habitId),
-        where('date', '==', date)
-      )
-      snapshot = await getDocs(q)
-    } catch (e) {
-      console.error('[FIRESTORE FAILURE] Operation: getDocs (Query), Collection: habitCompletions, Query: userId == ' + userId + ', habitId == ' + habitId + ', date == ' + date + ', AuthUID: ' + currentUserUid, e);
-      throw e;
-    }
+    const snapshot = await runWithFirestoreLogger(
+      {
+        operation: 'getDocs',
+        collection: 'habitCompletions',
+        queryConstraints: `userId == ${userId}, habitId == ${habitId}, date == ${date}`,
+      },
+      () => getDocs(q)
+    )
 
     const deletePromises: Promise<void>[] = []
     snapshot.forEach((docSnap) => {
-      console.log('[FIRESTORE OPERATION] Type: deleteDoc, Collection: habitCompletions, Path: ' + docSnap.ref.path + ', AuthUID: ' + currentUserUid);
       deletePromises.push(
-        (async () => {
-          try {
-            await deleteDoc(docSnap.ref)
-          } catch (e) {
-            console.error('[FIRESTORE FAILURE] Operation: deleteDoc, Collection: habitCompletions, Path: ' + docSnap.ref.path + ', AuthUID: ' + currentUserUid, e);
-            throw e;
-          }
-        })()
+        runWithFirestoreLogger(
+          {
+            operation: 'deleteDoc',
+            collection: 'habitCompletions',
+            path: docSnap.ref.path,
+          },
+          () => deleteDoc(docSnap.ref)
+        )
       )
     })
 
@@ -198,25 +188,23 @@ export const trackingService = {
     }
   },
 
-  // 3. Get completions list for a specific habit
   async getHabitCompletions(userId: string, habitId: string): Promise<HabitCompletion[]> {
     if (!this.isInitialized()) return []
 
-    const currentUserUid = firebaseAuth?.currentUser?.uid || 'Not Authenticated'
-    console.log('[FIRESTORE OPERATION] Type: getDocs (Query), Collection: habitCompletions, Query: userId == ' + userId + ', habitId == ' + habitId + ', AuthUID: ' + currentUserUid);
+    const q = query(
+      collection(firebaseDb!, 'habitCompletions'),
+      where('userId', '==', userId),
+      where('habitId', '==', habitId)
+    )
 
-    let snapshot;
-    try {
-      const q = query(
-        collection(firebaseDb!, 'habitCompletions'),
-        where('userId', '==', userId),
-        where('habitId', '==', habitId)
-      )
-      snapshot = await getDocs(q)
-    } catch (e) {
-      console.error('[FIRESTORE FAILURE] Operation: getDocs (Query), Collection: habitCompletions, Query: userId == ' + userId + ', habitId == ' + habitId + ', AuthUID: ' + currentUserUid, e);
-      throw e;
-    }
+    const snapshot = await runWithFirestoreLogger(
+      {
+        operation: 'getDocs',
+        collection: 'habitCompletions',
+        queryConstraints: `userId == ${userId}, habitId == ${habitId}`,
+      },
+      () => getDocs(q)
+    )
 
     const list: HabitCompletion[] = []
     snapshot.forEach((docSnap) => {
@@ -226,26 +214,24 @@ export const trackingService = {
     return list
   },
 
-  // 4. Get completions list for a user today
   async getTodayCompletions(userId: string): Promise<HabitCompletion[]> {
     if (!this.isInitialized()) return []
 
     const todayStr = getLocalDateString()
-    const currentUserUid = firebaseAuth?.currentUser?.uid || 'Not Authenticated'
-    console.log('[FIRESTORE OPERATION] Type: getDocs (Query), Collection: habitCompletions, Query: userId == ' + userId + ', date == ' + todayStr + ', AuthUID: ' + currentUserUid);
+    const q = query(
+      collection(firebaseDb!, 'habitCompletions'),
+      where('userId', '==', userId),
+      where('date', '==', todayStr)
+    )
 
-    let snapshot;
-    try {
-      const q = query(
-        collection(firebaseDb!, 'habitCompletions'),
-        where('userId', '==', userId),
-        where('date', '==', todayStr)
-      )
-      snapshot = await getDocs(q)
-    } catch (e) {
-      console.error('[FIRESTORE FAILURE] Operation: getDocs (Query), Collection: habitCompletions, Query: userId == ' + userId + ', date == ' + todayStr + ', AuthUID: ' + currentUserUid, e);
-      throw e;
-    }
+    const snapshot = await runWithFirestoreLogger(
+      {
+        operation: 'getDocs',
+        collection: 'habitCompletions',
+        queryConstraints: `userId == ${userId}, date == ${todayStr}`,
+      },
+      () => getDocs(q)
+    )
 
     const list: HabitCompletion[] = []
     snapshot.forEach((docSnap) => {
@@ -255,21 +241,22 @@ export const trackingService = {
     return list
   },
 
-  // 5. Get all completions for a user
   async getUserCompletions(userId: string): Promise<HabitCompletion[]> {
     if (!this.isInitialized()) return []
 
-    const currentUserUid = firebaseAuth?.currentUser?.uid || 'Not Authenticated'
-    console.log('[FIRESTORE OPERATION] Type: getDocs (Query), Collection: habitCompletions, Query: userId == ' + userId + ', AuthUID: ' + currentUserUid);
+    const q = query(
+      collection(firebaseDb!, 'habitCompletions'),
+      where('userId', '==', userId)
+    )
 
-    let snapshot;
-    try {
-      const q = query(collection(firebaseDb!, 'habitCompletions'), where('userId', '==', userId))
-      snapshot = await getDocs(q)
-    } catch (e) {
-      console.error('[FIRESTORE FAILURE] Operation: getDocs (Query), Collection: habitCompletions, Query: userId == ' + userId + ', AuthUID: ' + currentUserUid, e);
-      throw e;
-    }
+    const snapshot = await runWithFirestoreLogger(
+      {
+        operation: 'getDocs',
+        collection: 'habitCompletions',
+        queryConstraints: `userId == ${userId}`,
+      },
+      () => getDocs(q)
+    )
 
     const list: HabitCompletion[] = []
     snapshot.forEach((docSnap) => {
@@ -279,7 +266,6 @@ export const trackingService = {
     return list
   },
 
-  // 6. Recalculate streak values and update parent habit document
   async updateHabitStats(userId: string, habitId: string, todayStr: string): Promise<void> {
     const completions = await this.getHabitCompletions(userId, habitId)
     const dates = completions.map((c) => c.date)
@@ -289,16 +275,15 @@ export const trackingService = {
     const lastCompletedDate = sortedDates.length > 0 ? sortedDates[sortedDates.length - 1] : null
 
     const habitDocRef = doc(firebaseDb!, 'habits', habitId)
-    const currentUserUid = firebaseAuth?.currentUser?.uid || 'Not Authenticated'
-    console.log('[FIRESTORE OPERATION] Type: getDoc, Collection: habits, Path: ' + habitDocRef.path + ', AuthUID: ' + currentUserUid);
 
-    let habitDoc;
-    try {
-      habitDoc = await getDoc(habitDocRef)
-    } catch (e) {
-      console.error('[FIRESTORE FAILURE] Operation: getDoc, Collection: habits, Path: ' + habitDocRef.path + ', AuthUID: ' + currentUserUid, e);
-      throw e;
-    }
+    const habitDoc = await runWithFirestoreLogger(
+      {
+        operation: 'getDoc',
+        collection: 'habits',
+        path: habitDocRef.path,
+      },
+      () => getDoc(habitDocRef)
+    )
 
     if (habitDoc.exists()) {
       const habitData = habitDoc.data()
@@ -308,7 +293,6 @@ export const trackingService = {
       const createdTime = new Date(createdDateStr + 'T00:00:00').getTime()
       const todayTime = new Date(todayStr + 'T00:00:00').getTime()
 
-      // Calculate total scheduled/elapsed days
       const totalDays = Math.max(
         1,
         Math.round((todayTime - createdTime) / (1000 * 60 * 60 * 24)) + 1
@@ -325,14 +309,15 @@ export const trackingService = {
         updatedAt: new Date().toISOString(),
       }
 
-      console.log('[FIRESTORE OPERATION] Type: updateDoc, Collection: habits, Path: ' + habitDocRef.path + ', Payload: ', JSON.stringify(updatePayload), ', AuthUID: ' + currentUserUid);
-
-      try {
-        await updateDoc(habitDocRef, updatePayload)
-      } catch (e) {
-        console.error('[FIRESTORE FAILURE] Operation: updateDoc, Collection: habits, Path: ' + habitDocRef.path + ', Payload: ', JSON.stringify(updatePayload), ', AuthUID: ' + currentUserUid, e);
-        throw e;
-      }
+      await runWithFirestoreLogger(
+        {
+          operation: 'updateDoc',
+          collection: 'habits',
+          path: habitDocRef.path,
+          payload: updatePayload,
+        },
+        () => updateDoc(habitDocRef, updatePayload)
+      )
     }
   },
 }

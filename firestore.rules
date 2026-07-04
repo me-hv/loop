@@ -37,7 +37,7 @@ service cloud.firestore {
     }
 
     // 4. Journal reflections rules
-    match /journal/{entryId} {
+    match /journals/{entryId} {
       allow read, write: if isAuthenticated() && (
         resource == null || resource.data.userId == request.auth.uid
       ) && (
@@ -79,6 +79,20 @@ service cloud.firestore {
       ) && (
         request.resource == null || request.resource.data.userId == request.auth.uid
       );
+    }
+
+    // 9. FCM Tokens rules
+    match /fcmTokens/{token} {
+      allow read, write: if isAuthenticated() && (
+        resource == null || resource.data.userId == request.auth.uid
+      ) && (
+        request.resource == null || request.resource.data.userId == request.auth.uid
+      );
+    }
+
+    // 10. Notification Settings rules
+    match /notificationSettings/{userId} {
+      allow read, write: if isOwner(userId);
     }
   }
 }

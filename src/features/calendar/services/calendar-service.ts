@@ -17,6 +17,7 @@ import {
   getDay,
 } from 'date-fns'
 import { firebaseDb } from '@/lib/firebase/client'
+import { runWithFirestoreLogger } from '@/lib/firebase/logger'
 import { habitsService } from '@/features/habits/services/habits-service'
 import { HabitCompletion } from '@/features/tracking/types'
 import { getLocalDateString } from '@/features/tracking/services/tracking-service'
@@ -76,7 +77,14 @@ async function fetchCompletionsInRange(
     where('date', '<=', endDateStr)
   )
 
-  const snapshot = await getDocs(q)
+  const snapshot = await runWithFirestoreLogger(
+    {
+      operation: 'getDocs',
+      collection: 'habitCompletions',
+      queryConstraints: `userId == ${userId}, date >= ${startDateStr}, date <= ${endDateStr}`,
+    },
+    () => getDocs(q)
+  )
   const list: HabitCompletion[] = []
   snapshot.forEach((docSnap) => {
     list.push({ id: docSnap.id, ...docSnap.data() } as HabitCompletion)
@@ -99,7 +107,14 @@ async function fetchJournalsInRange(
     where('date', '<=', endDateStr)
   )
 
-  const snapshot = await getDocs(q)
+  const snapshot = await runWithFirestoreLogger(
+    {
+      operation: 'getDocs',
+      collection: 'journals',
+      queryConstraints: `userId == ${userId}, date >= ${startDateStr}, date <= ${endDateStr}`,
+    },
+    () => getDocs(q)
+  )
   const list: string[] = []
   snapshot.forEach((docSnap) => {
     const data = docSnap.data()
@@ -308,7 +323,14 @@ export const calendarService = {
       collection(firebaseDb!, 'habitCompletions'),
       where('userId', '==', userId)
     )
-    const snapshot = await getDocs(q)
+    const snapshot = await runWithFirestoreLogger(
+      {
+        operation: 'getDocs',
+        collection: 'habitCompletions',
+        queryConstraints: `userId == ${userId}`,
+      },
+      () => getDocs(q)
+    )
     const completions: HabitCompletion[] = []
     snapshot.forEach((docSnap) => {
       completions.push({ id: docSnap.id, ...docSnap.data() } as HabitCompletion)

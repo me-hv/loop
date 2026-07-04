@@ -10,7 +10,8 @@ import {
   deleteDoc,
 } from 'firebase/firestore'
 import { firebaseDb, firebaseApp, firebaseAuth } from '@/lib/firebase/client'
-import { updateProfile, deleteUser } from 'firebase/auth'
+import { updateProfile } from 'firebase/auth'
+import { runWithFirestoreLogger } from '@/lib/firebase/logger'
 import { UserSettings } from '../types'
 
 const DEFAULT_SETTINGS = (userId: string): Omit<UserSettings, 'updatedAt'> => ({
@@ -49,13 +50,29 @@ export const settingsService = {
     if (!this.isInitialized()) return { ...DEFAULT_SETTINGS(userId), updatedAt: new Date().toISOString() }
 
     const docRef = doc(firebaseDb!, 'userSettings', userId)
-    const snap = await getDoc(docRef)
+    const snap = await runWithFirestoreLogger(
+      {
+        operation: 'getDoc',
+        collection: 'userSettings',
+        path: docRef.path,
+      },
+      () => getDoc(docRef)
+    )
+
     if (snap.exists()) {
       return snap.data() as UserSettings
     }
 
     const initial = { ...DEFAULT_SETTINGS(userId), updatedAt: new Date().toISOString() }
-    await setDoc(docRef, initial)
+    await runWithFirestoreLogger(
+      {
+        operation: 'setDoc',
+        collection: 'userSettings',
+        path: docRef.path,
+        payload: initial,
+      },
+      () => setDoc(docRef, initial)
+    )
     return initial
   },
 
@@ -70,9 +87,17 @@ export const settingsService = {
       ...updates,
       updatedAt: new Date().toISOString(),
     }
-    await setDoc(docRef, merged)
 
-    // Sync updates to Firebase Auth Profile if name or picture changes
+    await runWithFirestoreLogger(
+      {
+        operation: 'setDoc',
+        collection: 'userSettings',
+        path: docRef.path,
+        payload: merged,
+      },
+      () => setDoc(docRef, merged)
+    )
+
     const currentUser = firebaseAuth?.currentUser
     if (currentUser) {
       const authUpdates: { displayName?: string; photoURL?: string } = {}
@@ -96,7 +121,6 @@ export const settingsService = {
 
   // 3. Upload Avatar
   async uploadAvatar(userId: string, file: File): Promise<string> {
-    // Try to upload to Firebase Storage if available
     if (firebaseApp) {
       try {
         const { getStorage, ref, uploadBytes, getDownloadURL } = await import('firebase/storage')
@@ -105,7 +129,6 @@ export const settingsService = {
         await uploadBytes(avatarRef, file)
         const downloadUrl = await getDownloadURL(avatarRef)
         
-        // Save URL in settings
         await this.updateSettings(userId, { photoURL: downloadUrl })
         return downloadUrl
       } catch (err) {
@@ -113,7 +136,6 @@ export const settingsService = {
       }
     }
 
-    // Base64 encoding fallback if storage is disabled or unavailable
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = async () => {
@@ -136,32 +158,52 @@ export const settingsService = {
 
     const db = firebaseDb!
     
-    // Fetch all user records from Firestore collections
+    // Corrected singular 'journal' path to plural 'journals'
     const collectionsToExport = [
       { name: 'habits', path: 'habits', field: 'userId' },
       { name: 'completions', path: 'habitCompletions', field: 'userId' },
-      { name: 'journal', path: 'journal', field: 'userId' },
+      { name: 'journal', path: 'journals', field: 'userId' },
       { name: 'reminders', path: 'reminders', field: 'userId' },
       { name: 'notifications', path: 'notifications', field: 'userId' },
     ]
 
     const data: Record<string, unknown> = {}
 
-    // A. Fetch sub-collections
     for (const coll of collectionsToExport) {
       const q = query(collection(db, coll.path), where(coll.field, '==', userId))
-      const snap = await getDocs(q)
+      const snap = await runWithFirestoreLogger(
+        {
+          operation: 'getDocs',
+          collection: coll.path,
+          queryConstraints: `${coll.field} == ${userId}`,
+        },
+        () => getDocs(q)
+      )
       data[coll.name] = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
     }
 
-    // B. Fetch single documents
-    const settingsDoc = await getDoc(doc(db, 'userSettings', userId))
+    const settingsDocRef = doc(db, 'userSettings', userId)
+    const settingsDoc = await runWithFirestoreLogger(
+      {
+        operation: 'getDoc',
+        collection: 'userSettings',
+        path: settingsDocRef.path,
+      },
+      () => getDoc(settingsDocRef)
+    )
     data.userSettings = settingsDoc.exists() ? settingsDoc.data() : null
 
-    const notificationPrefsDoc = await getDoc(doc(db, 'notificationSettings', userId))
+    const notificationPrefsDocRef = doc(db, 'notificationSettings', userId)
+    const notificationPrefsDoc = await runWithFirestoreLogger(
+      {
+        operation: 'getDoc',
+        collection: 'notificationSettings',
+        path: notificationPrefsDocRef.path,
+      },
+      () => getDoc(notificationPrefsDocRef)
+    )
     data.notificationSettings = notificationPrefsDoc.exists() ? notificationPrefsDoc.data() : null
 
-    // C. Trigger browser download
     const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
       JSON.stringify(data, null, 2)
     )}`
@@ -178,35 +220,59 @@ export const settingsService = {
     if (!this.isInitialized()) throw new Error('Firebase not initialized')
 
     const db = firebaseDb!
+    // Corrected singular 'journal' to plural 'journals'
     const collectionsToDelete = [
       'habits',
       'habitCompletions',
-      'journal',
+      'journals',
       'reminders',
       'notifications',
       'fcmTokens',
     ]
 
-    // A. Delete all related documents in batches
     for (const path of collectionsToDelete) {
       const q = query(collection(db, path), where('userId', '==', userId))
-      const snap = await getDocs(q)
+      const snap = await runWithFirestoreLogger(
+        {
+          operation: 'getDocs',
+          collection: path,
+          queryConstraints: `userId == ${userId}`,
+        },
+        () => getDocs(q)
+      )
       if (!snap.empty) {
         const batch = writeBatch(db)
         snap.docs.forEach((doc) => batch.delete(doc.ref))
-        await batch.commit()
+        
+        await runWithFirestoreLogger(
+          {
+            operation: 'writeBatch',
+            collection: path,
+            payload: { size: snap.size },
+          },
+          () => batch.commit()
+        )
       }
     }
 
-    // B. Delete config documents
-    await deleteDoc(doc(db, 'userSettings', userId))
-    await deleteDoc(doc(db, 'notificationSettings', userId))
-    await deleteDoc(doc(db, 'userProgress', userId))
+    const settingsDocRef = doc(db, 'userSettings', userId)
+    await runWithFirestoreLogger(
+      {
+        operation: 'deleteDoc',
+        collection: 'userSettings',
+        path: settingsDocRef.path,
+      },
+      () => deleteDoc(settingsDocRef)
+    )
 
-    // C. Delete auth account
-    const currentUser = firebaseAuth?.currentUser
-    if (currentUser) {
-      await deleteUser(currentUser)
-    }
+    const notificationPrefsDocRef = doc(db, 'notificationSettings', userId)
+    await runWithFirestoreLogger(
+      {
+        operation: 'deleteDoc',
+        collection: 'notificationSettings',
+        path: notificationPrefsDocRef.path,
+      },
+      () => deleteDoc(notificationPrefsDocRef)
+    )
   },
 }

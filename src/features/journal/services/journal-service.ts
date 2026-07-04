@@ -10,6 +10,7 @@ import {
   orderBy,
 } from 'firebase/firestore'
 import { firebaseDb } from '@/lib/firebase/client'
+import { runWithFirestoreLogger } from '@/lib/firebase/logger'
 import { JournalEntry } from '../types'
 
 function isInitialized(): boolean {
@@ -17,12 +18,10 @@ function isInitialized(): boolean {
 }
 
 export const journalService = {
-  // Generates unique document ID per user per date
   getDocId(userId: string, date: string): string {
     return `${userId}_${date}`
   },
 
-  // 1. Create or Overwrite a journal entry
   async saveJournal(
     userId: string,
     date: string,
@@ -34,7 +33,15 @@ export const journalService = {
 
     const docId = this.getDocId(userId, date)
     const docRef = doc(firebaseDb!, 'journals', docId)
-    const existingSnap = await getDoc(docRef)
+    
+    const existingSnap = await runWithFirestoreLogger(
+      {
+        operation: 'getDoc',
+        collection: 'journals',
+        path: docRef.path,
+      },
+      () => getDoc(docRef)
+    )
 
     const now = new Date().toISOString()
     let createdAt = now
@@ -52,17 +59,33 @@ export const journalService = {
       updatedAt: now,
     }
 
-    await setDoc(docRef, journalDoc)
+    await runWithFirestoreLogger(
+      {
+        operation: 'setDoc',
+        collection: 'journals',
+        path: docRef.path,
+        payload: journalDoc,
+      },
+      () => setDoc(docRef, journalDoc)
+    )
+
     return journalDoc
   },
 
-  // 2. Fetch a single journal entry by date
   async getJournalByDate(userId: string, date: string): Promise<JournalEntry | null> {
     if (!isInitialized()) return null
 
     const docId = this.getDocId(userId, date)
     const docRef = doc(firebaseDb!, 'journals', docId)
-    const docSnap = await getDoc(docRef)
+    
+    const docSnap = await runWithFirestoreLogger(
+      {
+        operation: 'getDoc',
+        collection: 'journals',
+        path: docRef.path,
+      },
+      () => getDoc(docRef)
+    )
 
     if (docSnap.exists()) {
       return docSnap.data() as JournalEntry
@@ -71,7 +94,6 @@ export const journalService = {
     return null
   },
 
-  // 3. Delete a journal entry
   async deleteJournal(userId: string, date: string): Promise<void> {
     if (!isInitialized()) {
       throw new Error('Firebase Firestore is not initialized.')
@@ -79,10 +101,17 @@ export const journalService = {
 
     const docId = this.getDocId(userId, date)
     const docRef = doc(firebaseDb!, 'journals', docId)
-    await deleteDoc(docRef)
+
+    await runWithFirestoreLogger(
+      {
+        operation: 'deleteDoc',
+        collection: 'journals',
+        path: docRef.path,
+      },
+      () => deleteDoc(docRef)
+    )
   },
 
-  // 4. Fetch all user journal entries for timeline list
   async getJournalHistory(userId: string): Promise<JournalEntry[]> {
     if (!isInitialized()) return []
 
@@ -92,9 +121,16 @@ export const journalService = {
       orderBy('date', 'desc')
     )
 
-    const snapshot = await getDocs(q)
-    const list: JournalEntry[] = []
+    const snapshot = await runWithFirestoreLogger(
+      {
+        operation: 'getDocs',
+        collection: 'journals',
+        queryConstraints: `userId == ${userId}, orderBy == date desc`,
+      },
+      () => getDocs(q)
+    )
 
+    const list: JournalEntry[] = []
     snapshot.forEach((docSnap) => {
       list.push(docSnap.data() as JournalEntry)
     })

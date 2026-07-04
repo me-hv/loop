@@ -9,6 +9,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { firebaseDb } from '@/lib/firebase/client'
+import { runWithFirestoreLogger } from '@/lib/firebase/logger'
 import { Habit } from '../types'
 
 export const habitsService = {
@@ -16,7 +17,6 @@ export const habitsService = {
     return !!firebaseDb
   },
 
-  // 1. Create a habit
   async createHabit(
     userId: string,
     data: Omit<Habit, 'id' | 'userId' | 'isDeleted' | 'createdAt' | 'updatedAt'>
@@ -43,7 +43,14 @@ export const habitsService = {
       updatedAt: new Date().toISOString(),
     }
 
-    const docRef = await addDoc(collection(firebaseDb!, 'habits'), newHabitData)
+    const docRef = await runWithFirestoreLogger(
+      {
+        operation: 'addDoc',
+        collection: 'habits',
+        payload: newHabitData,
+      },
+      () => addDoc(collection(firebaseDb!, 'habits'), newHabitData)
+    )
 
     return {
       id: docRef.id,
@@ -51,7 +58,6 @@ export const habitsService = {
     }
   },
 
-  // 2. Fetch all habits for a specific user (excluding soft-deleted ones)
   async getHabits(userId: string): Promise<Habit[]> {
     if (!this.isInitialized()) return []
 
@@ -61,9 +67,16 @@ export const habitsService = {
       where('isDeleted', '==', false)
     )
 
-    const querySnapshot = await getDocs(q)
-    const habits: Habit[] = []
+    const querySnapshot = await runWithFirestoreLogger(
+      {
+        operation: 'getDocs',
+        collection: 'habits',
+        queryConstraints: `userId == ${userId}, isDeleted == false`,
+      },
+      () => getDocs(q)
+    )
 
+    const habits: Habit[] = []
     querySnapshot.forEach((docSnap) => {
       habits.push({
         id: docSnap.id,
@@ -74,16 +87,22 @@ export const habitsService = {
     return habits
   },
 
-  // 3. Fetch a single habit
   async getHabit(habitId: string): Promise<Habit | null> {
     if (!this.isInitialized()) return null
 
     const docRef = doc(firebaseDb!, 'habits', habitId)
-    const docSnap = await getDoc(docRef)
+    const docSnap = await runWithFirestoreLogger(
+      {
+        operation: 'getDoc',
+        collection: 'habits',
+        path: docRef.path,
+      },
+      () => getDoc(docRef)
+    )
 
     if (docSnap.exists()) {
       const data = docSnap.data() as Omit<Habit, 'id'>
-      if (data.isDeleted) return null // Exclude soft-deleted
+      if (data.isDeleted) return null
 
       return {
         id: docSnap.id,
@@ -94,29 +113,46 @@ export const habitsService = {
     return null
   },
 
-  // 4. Update a habit
   async updateHabit(habitId: string, data: Partial<Omit<Habit, 'id' | 'userId'>>): Promise<void> {
     if (!this.isInitialized()) return
 
     const docRef = doc(firebaseDb!, 'habits', habitId)
-    await updateDoc(docRef, {
+    const updatePayload = {
       ...data,
       updatedAt: new Date().toISOString(),
-    })
+    }
+
+    await runWithFirestoreLogger(
+      {
+        operation: 'updateDoc',
+        collection: 'habits',
+        path: docRef.path,
+        payload: updatePayload,
+      },
+      () => updateDoc(docRef, updatePayload)
+    )
   },
 
-  // 5. Soft-delete a habit (set isDeleted = true)
   async deleteHabit(habitId: string): Promise<void> {
     if (!this.isInitialized()) return
 
     const docRef = doc(firebaseDb!, 'habits', habitId)
-    await updateDoc(docRef, {
+    const updatePayload = {
       isDeleted: true,
       updatedAt: new Date().toISOString(),
-    })
+    }
+
+    await runWithFirestoreLogger(
+      {
+        operation: 'updateDoc',
+        collection: 'habits',
+        path: docRef.path,
+        payload: updatePayload,
+      },
+      () => updateDoc(docRef, updatePayload)
+    )
   },
 
-  // 6. Duplicate a habit
   async duplicateHabit(habitId: string): Promise<Habit> {
     if (!this.isInitialized()) {
       throw new Error('Firebase Firestore is not initialized.')
@@ -145,7 +181,14 @@ export const habitsService = {
       updatedAt: new Date().toISOString(),
     }
 
-    const docRef = await addDoc(collection(firebaseDb!, 'habits'), duplicatedData)
+    const docRef = await runWithFirestoreLogger(
+      {
+        operation: 'addDoc',
+        collection: 'habits',
+        payload: duplicatedData,
+      },
+      () => addDoc(collection(firebaseDb!, 'habits'), duplicatedData)
+    )
 
     return {
       id: docRef.id,

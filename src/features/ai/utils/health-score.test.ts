@@ -11,9 +11,11 @@ describe('calculateHabitHealth', () => {
     description: '15 mins yoga',
     category: 'Health',
     frequency: 'Daily',
-    difficulty: 'Easy',
+    difficulty: 'easy',
     color: '#000000',
     icon: 'activity',
+    goal: 1,
+    unit: 'Times',
     createdAt: '2026-06-01T00:00:00Z',
     updatedAt: '2026-06-01T00:00:00Z',
     isDeleted: false,
@@ -38,6 +40,8 @@ describe('calculateHabitHealth', () => {
         habitId: 'habit_123',
         date: `2026-06-${day < 10 ? '0' + day : day}`,
         completed: true,
+        completedAt: '2026-06-01T00:00:00Z',
+        goalValue: 1,
         createdAt: '2026-06-01T00:00:00Z',
       })
     }

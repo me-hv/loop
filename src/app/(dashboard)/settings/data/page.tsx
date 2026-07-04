@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore'
 import { firebaseDb } from '@/lib/firebase/client'
+import { runWithFirestoreLogger } from '@/lib/firebase/logger'
 import { useRouter } from 'next/navigation'
 
 type DestructiveAction = 'delete_journals' | 'delete_habits' | 'delete_account' | null
@@ -61,30 +62,72 @@ export default function DataSettingsPage() {
       const db = firebaseDb!
 
       if (activeModal === 'delete_journals') {
-        const q = query(collection(db, 'journal'), where('userId', '==', user.uid))
-        const snap = await getDocs(q)
+        const q = query(collection(db, 'journals'), where('userId', '==', user.uid))
+        const snap = await runWithFirestoreLogger(
+          {
+            operation: 'getDocs',
+            collection: 'journals',
+            queryConstraints: `userId == ${user.uid}`,
+          },
+          () => getDocs(q)
+        )
         if (!snap.empty) {
           const batch = writeBatch(db)
           snap.docs.forEach((doc) => batch.delete(doc.ref))
-          await batch.commit()
+          await runWithFirestoreLogger(
+            {
+              operation: 'writeBatch',
+              collection: 'journals',
+              payload: { size: snap.size },
+            },
+            () => batch.commit()
+          )
         }
         setSuccessMsg('All journal entries have been deleted.')
       } else if (activeModal === 'delete_habits') {
         const qHab = query(collection(db, 'habits'), where('userId', '==', user.uid))
-        const snapHab = await getDocs(qHab)
+        const snapHab = await runWithFirestoreLogger(
+          {
+            operation: 'getDocs',
+            collection: 'habits',
+            queryConstraints: `userId == ${user.uid}`,
+          },
+          () => getDocs(qHab)
+        )
         if (!snapHab.empty) {
           const batch = writeBatch(db)
           snapHab.docs.forEach((doc) => batch.delete(doc.ref))
-          await batch.commit()
+          await runWithFirestoreLogger(
+            {
+              operation: 'writeBatch',
+              collection: 'habits',
+              payload: { size: snapHab.size },
+            },
+            () => batch.commit()
+          )
         }
         
         // Also delete completions
         const qComp = query(collection(db, 'habitCompletions'), where('userId', '==', user.uid))
-        const snapComp = await getDocs(qComp)
+        const snapComp = await runWithFirestoreLogger(
+          {
+            operation: 'getDocs',
+            collection: 'habitCompletions',
+            queryConstraints: `userId == ${user.uid}`,
+          },
+          () => getDocs(qComp)
+        )
         if (!snapComp.empty) {
           const batch = writeBatch(db)
           snapComp.docs.forEach((doc) => batch.delete(doc.ref))
-          await batch.commit()
+          await runWithFirestoreLogger(
+            {
+              operation: 'writeBatch',
+              collection: 'habitCompletions',
+              payload: { size: snapComp.size },
+            },
+            () => batch.commit()
+          )
         }
         setSuccessMsg('All habits and completions have been deleted.')
       } else if (activeModal === 'delete_account') {
