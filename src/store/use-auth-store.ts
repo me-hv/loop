@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 export interface UserProfile {
   uid: string
+  userId?: string
   firstName: string
   lastName: string
   displayName: string

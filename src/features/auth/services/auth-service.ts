@@ -59,6 +59,7 @@ const buildDefaultProfile = (
 
   return {
     uid: user.uid,
+    userId: user.uid,
     firstName,
     lastName,
     displayName,
