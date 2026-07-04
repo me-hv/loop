@@ -33,6 +33,7 @@ import {
   BookOpen,
   Trophy,
   Bell,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NotificationBadge } from '@/features/notifications/components/NotificationBadge'
@@ -93,6 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Habits', href: '/dashboard/habits', icon: Calendar },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Achievements', href: '/dashboard/achievements', icon: Trophy },
+    { name: 'AI Coach', href: '/dashboard/ai', icon: Sparkles },
     { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
     { name: 'Profile', href: '/dashboard/profile/progress', icon: User },
     { name: 'Settings', href: '/settings/profile', icon: Settings },
@@ -121,6 +123,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       else if (seg === 'achievements') name = 'Achievements'
       else if (seg === 'notifications') name = 'Notifications'
       else if (seg === 'settings') name = 'Settings'
+      else if (seg === 'ai') name = 'AI Coach'
       else if (seg === 'profile') name = 'Profile'
       else if (seg === 'progress') name = 'Progress'
       else if (seg === 'new') name = 'New'
