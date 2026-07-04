@@ -166,3 +166,25 @@
   letter-spacing: 0.05em;
   @apply text-muted-foreground uppercase;
 }
+
+/* Custom Accent Color overrides */
+.accent-indigo {
+  --accent: #6366F1;
+  --ring: #6366F1;
+}
+.accent-emerald {
+  --accent: #10B981;
+  --ring: #10B981;
+}
+.accent-rose {
+  --accent: #F43F5E;
+  --ring: #F43F5E;
+}
+.accent-amber {
+  --accent: #F59E0B;
+  --ring: #F59E0B;
+}
+.accent-violet {
+  --accent: #8B5CF6;
+  --ring: #8B5CF6;
+}

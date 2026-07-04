@@ -36,6 +36,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NotificationBadge } from '@/features/notifications/components/NotificationBadge'
+import { useSettings, useTheme } from '@/features/settings/hooks/use-settings'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -45,6 +46,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const mobileMenuOpen = useUIStore((state) => state.mobileMenuOpen)
   const toggleMobileMenu = useUIStore((state) => state.toggleMobileMenu)
   const { user, logout } = useAuthStore()
+  const { settings } = useSettings(user?.uid)
+  useTheme(user?.uid)
 
   const isLoading = useAuthStore((state) => state.isLoading)
 
@@ -92,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Achievements', href: '/dashboard/achievements', icon: Trophy },
     { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
     { name: 'Profile', href: '/dashboard/profile/progress', icon: User },
-    { name: 'Settings', href: '/dashboard/settings/notifications', icon: Settings },
+    { name: 'Settings', href: '/settings/profile', icon: Settings },
   ]
 
   const handleLogout = () => {
@@ -131,7 +134,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex-grow flex h-screen overflow-hidden bg-background print:h-auto print:overflow-visible">
+    <div className={cn(
+      "flex-grow flex h-screen overflow-hidden bg-background print:h-auto print:overflow-visible",
+      settings?.accentColor ? `accent-${settings.accentColor}` : 'accent-indigo',
+      settings?.compactMode && 'theme-compact',
+      settings?.fontSize === 'sm' && 'text-sm',
+      settings?.fontSize === 'lg' && 'text-lg'
+    )}>
       {/* Desktop Sidebar */}
       <aside
         className={cn(

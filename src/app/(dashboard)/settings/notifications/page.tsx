@@ -41,20 +41,14 @@ export default function NotificationSettingsPage() {
   const activeReminder = reminders.find((r) => r.habitId === selectedHabitId) || null
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* 1. Header */}
-      <div className="flex items-center justify-between gap-4 select-none">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-            Notification Settings
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Configure global quiet hours, weekend suppressions, and customized daily routine triggers.
-          </p>
-        </div>
+    <div className="space-y-6 select-none">
+      <div>
+        <h2 className="text-lg font-black text-foreground">Notification Preferences</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Configure quiet hours, weekend alarms, and custom reminder triggers per habit.
+        </p>
       </div>
 
-      {/* 2. Split Settings Panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Preferences */}
         {settings && (
@@ -72,7 +66,7 @@ export default function NotificationSettingsPage() {
 
         {/* Right Column: Custom Schedules */}
         <div className="space-y-4">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider select-none px-1 flex items-center gap-1">
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider select-none px-1">
             Schedules Config
           </h3>
           
@@ -122,7 +116,7 @@ export default function NotificationSettingsPage() {
 
 function SettingsSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-pulse select-none">
+    <div className="space-y-6 animate-pulse select-none">
       <div className="space-y-1">
         <div className="h-7 bg-muted/40 rounded w-1/4" />
         <div className="h-4 bg-muted/30 rounded w-1/3" />
