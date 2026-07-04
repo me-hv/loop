@@ -20,34 +20,15 @@ export async function runWithFirestoreLogger<T>(
     const duration = Date.now() - startTime
 
     // Log success details
-    console.log(`[FIRESTORE SUCCESS]`, {
-      operation: details.operation,
-      collection: details.collection,
-      path: details.path || null,
-      queryConstraints: details.queryConstraints || null,
-      authenticatedUid,
-      payload: details.payload || null,
-      durationMs: duration,
-      status: 'success'
-    })
+    console.log(`[FIRESTORE SUCCESS] ${details.operation} on ${details.collection} (${duration}ms). Path: ${details.path || 'N/A'}, Query: ${details.queryConstraints || 'N/A'}, AuthUID: ${authenticatedUid}`)
 
     return result
   } catch (error) {
     const duration = Date.now() - startTime
-    const errMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errMessage = error instanceof Error ? error.stack || error.message : 'Unknown error'
 
     // Log error details
-    console.error(`[FIRESTORE FAILURE]`, {
-      operation: details.operation,
-      collection: details.collection,
-      path: details.path || null,
-      queryConstraints: details.queryConstraints || null,
-      authenticatedUid,
-      payload: details.payload || null,
-      durationMs: duration,
-      error: errMessage,
-      status: 'failure'
-    })
+    console.error(`[FIRESTORE FAILURE] ${details.operation} on ${details.collection} failed after ${duration}ms. Error: ${errMessage}. Path: ${details.path || 'N/A'}, Query: ${details.queryConstraints || 'N/A'}, AuthUID: ${authenticatedUid}`)
 
     throw error
   }
