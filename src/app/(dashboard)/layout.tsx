@@ -32,8 +32,10 @@ import {
   CalendarDays,
   BookOpen,
   Trophy,
+  Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NotificationBadge } from '@/features/notifications/components/NotificationBadge'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -57,6 +59,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [user, isLoading, router])
 
+  // Register background push Messaging Service Worker
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/firebase-messaging-sw.js')
+        .then((reg) => {
+          console.log('FCM Service Worker registered:', reg)
+        })
+        .catch((err) => {
+          console.warn('FCM Service Worker registration failed:', err)
+        })
+    }
+  }, [])
+
   if (isLoading || !user || !user.emailVerified) {
     return (
       <div className="flex-grow flex flex-col items-center justify-center min-h-screen bg-background">
@@ -74,8 +90,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Habits', href: '/dashboard/habits', icon: Calendar },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Achievements', href: '/dashboard/achievements', icon: Trophy },
+    { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
     { name: 'Profile', href: '/dashboard/profile/progress', icon: User },
-    { name: 'Settings', href: '#settings', icon: Settings },
+    { name: 'Settings', href: '/dashboard/settings/notifications', icon: Settings },
   ]
 
   const handleLogout = () => {
@@ -99,6 +116,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       else if (seg === 'analytics') name = 'Analytics'
       else if (seg === 'journal') name = 'Journal'
       else if (seg === 'achievements') name = 'Achievements'
+      else if (seg === 'notifications') name = 'Notifications'
+      else if (seg === 'settings') name = 'Settings'
       else if (seg === 'profile') name = 'Profile'
       else if (seg === 'progress') name = 'Progress'
       else if (seg === 'new') name = 'New'
@@ -150,6 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 <Icon className={cn('h-5 w-5 flex-shrink-0', isActive ? 'text-white' : 'text-muted-foreground group-hover:text-foreground')} />
                 {sidebarExpanded && <span className="truncate">{item.name}</span>}
+                {item.name === 'Notifications' && <NotificationBadge />}
               </Link>
             )
           })}
@@ -299,6 +319,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   <Icon className="h-6 w-6" />
                   <span>{item.name}</span>
+                  {item.name === 'Notifications' && <NotificationBadge />}
                 </Link>
               )
             })}
