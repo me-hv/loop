@@ -31,6 +31,7 @@ import {
   CheckSquare,
   CalendarDays,
   BookOpen,
+  Trophy,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -72,6 +73,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Calendar', href: '/dashboard/calendar', icon: CalendarDays },
     { name: 'Habits', href: '/dashboard/habits', icon: Calendar },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: 'Achievements', href: '/dashboard/achievements', icon: Trophy },
+    { name: 'Profile', href: '/dashboard/profile/progress', icon: User },
     { name: 'Settings', href: '#settings', icon: Settings },
   ]
 
@@ -95,6 +98,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       else if (seg === 'calendar') name = 'Calendar'
       else if (seg === 'analytics') name = 'Analytics'
       else if (seg === 'journal') name = 'Journal'
+      else if (seg === 'achievements') name = 'Achievements'
+      else if (seg === 'profile') name = 'Profile'
+      else if (seg === 'progress') name = 'Progress'
       else if (seg === 'new') name = 'New'
       else if (seg === 'edit') name = 'Edit'
       else if (seg.length > 15) name = 'Details'
