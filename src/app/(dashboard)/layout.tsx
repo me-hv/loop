@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Today', href: '/dashboard/today', icon: CheckSquare },
     { name: 'Calendar', href: '/dashboard/calendar', icon: CalendarDays },
     { name: 'Habits', href: '/dashboard/habits', icon: Calendar },
-    { name: 'Analytics', href: '#analytics', icon: BarChart3 },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Settings', href: '#settings', icon: Settings },
   ]
 
@@ -91,6 +91,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       else if (seg === 'habits') name = 'Habits'
       else if (seg === 'today') name = 'Today'
       else if (seg === 'calendar') name = 'Calendar'
+      else if (seg === 'analytics') name = 'Analytics'
       else if (seg === 'new') name = 'New'
       else if (seg === 'edit') name = 'Edit'
       else if (seg.length > 15) name = 'Details'
@@ -102,11 +103,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex-grow flex h-screen overflow-hidden bg-background">
+    <div className="flex-grow flex h-screen overflow-hidden bg-background print:h-auto print:overflow-visible">
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'hidden md:flex flex-col border-r border-border bg-card transition-all duration-300 ease-in-out relative z-20',
+          'hidden md:flex flex-col border-r border-border bg-card transition-all duration-300 ease-in-out relative z-20 print:hidden',
           sidebarExpanded ? 'w-64' : 'w-20'
         )}
       >
@@ -182,9 +183,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative print:h-auto print:overflow-visible">
         {/* Top Navbar */}
-        <header className="h-16 border-b border-border bg-card/60 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between relative z-10">
+        <header className="h-16 border-b border-border bg-card/60 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between relative z-10 print:hidden">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -258,7 +259,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Scrollable Main Area */}
-        <main className="flex-grow overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
+        <main className="flex-grow overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 print:p-0 print:overflow-visible">
           {children}
         </main>
 
