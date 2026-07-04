@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/providers/providers'
+import { PwaRegister } from '@/components/common/PwaRegister'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -14,8 +15,32 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Loop | Stay in the loop',
-  description: 'A modern, premium habit tracking application designed for consistency and performance.',
+  title: {
+    default: 'Loop | Stay in the loop',
+    template: '%s | Loop'
+  },
+  description: 'A modern, premium habit tracking application designed for consistency, reflections, and smart insights.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Loop'
+  },
+  formatDetection: {
+    telephone: false
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'Loop',
+    title: 'Loop - Stay in the Loop',
+    description: 'A modern, premium habit tracking application designed for consistency, reflections, and smart insights.',
+    url: 'https://loop-habits.web.app'
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Loop - Stay in the Loop',
+    description: 'A modern, premium habit tracking application designed for consistency, reflections, and smart insights.'
+  }
 }
 
 export default function RootLayout({
@@ -30,7 +55,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-200">
-        <Providers>{children}</Providers>
+        <Providers>
+          <PwaRegister />
+          {children}
+        </Providers>
       </body>
     </html>
   )

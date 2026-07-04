@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -27,5 +27,14 @@ if (isValidConfig) {
 
 export const firebaseApp = app
 export const firebaseAuth = app ? getAuth(app) : null
-export const firebaseDb = app ? getFirestore(app) : null
+
+// Enable Persistent Local Cache for multi-tab offline support
+export const firebaseDb = app 
+  ? initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    })
+  : null
+
 export const googleAuthProvider = new GoogleAuthProvider()

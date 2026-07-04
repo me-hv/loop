@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /api/
+
+Sitemap: https://loop-habits.web.app/sitemap.xml
