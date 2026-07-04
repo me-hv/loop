@@ -99,23 +99,28 @@ export function CalendarDay({
       aria-label={`${dateStr}${hasActivity ? `, ${completedCount} of ${totalCount} habits` : ''}`}
       aria-pressed={isSelected}
     >
-      {/* Day number */}
-      <div
-        className={cn(
-          'text-[11px] sm:text-xs font-bold leading-none select-none',
-          isTodayDate
-            ? 'text-accent'
-            : isCurrentMonth
-              ? 'text-foreground'
-              : 'text-muted-foreground/50'
-        )}
-      >
-        {isTodayDate ? (
-          <span className="inline-flex items-center justify-center h-4.5 w-4.5 sm:h-5 sm:w-5 rounded-full bg-accent text-white text-[10px] font-black">
-            {dayNum}
-          </span>
-        ) : (
-          dayNum
+      {/* Day number & Journal indicator */}
+      <div className="flex items-center justify-between w-full select-none">
+        <div
+          className={cn(
+            'text-[11px] sm:text-xs font-bold leading-none',
+            isTodayDate
+              ? 'text-accent'
+              : isCurrentMonth
+                ? 'text-foreground'
+                : 'text-muted-foreground/50'
+          )}
+        >
+          {isTodayDate ? (
+            <span className="inline-flex items-center justify-center h-4.5 w-4.5 sm:h-5 sm:w-5 rounded-full bg-accent text-white text-[10px] font-black">
+              {dayNum}
+            </span>
+          ) : (
+            dayNum
+          )}
+        </div>
+        {isCurrentMonth && !isFutureDate && data?.hasJournal && (
+          <span className="text-[10px]" title="Journal logged">📝</span>
         )}
       </div>
 

@@ -30,6 +30,7 @@ import {
   Search,
   CheckSquare,
   CalendarDays,
+  BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -67,6 +68,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Today', href: '/dashboard/today', icon: CheckSquare },
+    { name: 'Journal', href: '/dashboard/journal', icon: BookOpen },
     { name: 'Calendar', href: '/dashboard/calendar', icon: CalendarDays },
     { name: 'Habits', href: '/dashboard/habits', icon: Calendar },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
@@ -92,6 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       else if (seg === 'today') name = 'Today'
       else if (seg === 'calendar') name = 'Calendar'
       else if (seg === 'analytics') name = 'Analytics'
+      else if (seg === 'journal') name = 'Journal'
       else if (seg === 'new') name = 'New'
       else if (seg === 'edit') name = 'Edit'
       else if (seg.length > 15) name = 'Details'

@@ -11,6 +11,7 @@ export interface CalendarDayData {
   percentage: number // 0-100
   completionIds: string[]
   hasActivity: boolean
+  hasJournal?: boolean
 }
 
 // One cell in the 365-day heatmap

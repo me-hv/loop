@@ -11,13 +11,15 @@ import { ExportDialog } from '@/features/analytics/components/ExportDialog'
 import { EmptyAnalyticsState } from '@/features/analytics/components/EmptyAnalyticsState'
 import { Card } from '@/components/ui/card'
 import { AnalyticsTimeRange } from '@/features/analytics/types'
+import { useMoodAnalytics } from '@/features/journal/hooks/use-journal'
+import { WellBeingAnalytics } from '@/features/analytics/components/WellBeingAnalytics'
 import { cn } from '@/lib/utils'
 
 export default function AnalyticsPage() {
   const user = useAuthStore((s) => s.user)
   const [timeRange, setTimeRange] = useState<AnalyticsTimeRange>('30d')
+  const [activeTab, setActiveTab] = useState<'habits' | 'wellbeing'>('habits')
 
-  // Setup options if filters are needed in the future
   const {
     summary,
     habitPerformance,
@@ -27,6 +29,12 @@ export default function AnalyticsPage() {
     hasData,
   } = useAnalytics(user?.uid, timeRange)
 
+  const {
+    stats: moodStats,
+    trendData: moodTrend,
+    isLoading: moodLoading,
+  } = useMoodAnalytics(user?.uid)
+
   const rangeTabs: { label: string; value: AnalyticsTimeRange }[] = [
     { label: '7 Days', value: '7d' },
     { label: '30 Days', value: '30d' },
@@ -35,11 +43,11 @@ export default function AnalyticsPage() {
     { label: 'All Time', value: 'all' },
   ]
 
-  if (isLoading) {
+  if (isLoading || moodLoading) {
     return <LoadingSkeleton />
   }
 
-  if (!hasData) {
+  if (!hasData && moodStats.totalEntries === 0) {
     return <EmptyAnalyticsState />
   }
 
@@ -62,53 +70,89 @@ export default function AnalyticsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Time range switcher */}
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-muted border border-border/40 shrink-0">
-            {rangeTabs.map(({ label, value }) => (
-              <button
-                key={value}
-                onClick={() => setTimeRange(value)}
-                className={cn(
-                  'px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer select-none',
-                  timeRange === value
-                    ? 'bg-card text-foreground shadow-sm border border-border/40'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
-                )}
-              >
-                {label}
-              </button>
-            ))}
+        {activeTab === 'habits' && (
+          <div className="flex items-center gap-3">
+            {/* Time range switcher */}
+            <div className="flex items-center gap-1 p-1 rounded-lg bg-muted border border-border/40 shrink-0">
+              {rangeTabs.map(({ label, value }) => (
+                <button
+                  key={value}
+                  onClick={() => setTimeRange(value)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer select-none',
+                    timeRange === value
+                      ? 'bg-card text-foreground shadow-sm border border-border/40'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Export widget */}
+            <ExportDialog performance={habitPerformance} />
+          </div>
+        )}
+      </div>
+
+      {/* Tab Switcher triggers */}
+      <div className="flex border-b border-border/40 select-none gap-5 text-xs font-semibold text-muted-foreground pt-1 pb-1.5 print:hidden">
+        <button
+          type="button"
+          onClick={() => setActiveTab('habits')}
+          className={cn(
+            'pb-2 border-b-2 transition-all cursor-pointer outline-none',
+            activeTab === 'habits'
+              ? 'border-accent text-foreground font-black'
+              : 'border-transparent hover:text-foreground'
+          )}
+        >
+          Habit Metrics
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('wellbeing')}
+          className={cn(
+            'pb-2 border-b-2 transition-all cursor-pointer outline-none',
+            activeTab === 'wellbeing'
+              ? 'border-accent text-foreground font-black'
+              : 'border-transparent hover:text-foreground'
+          )}
+        >
+          Mood & Reflection
+        </button>
+      </div>
+
+      {activeTab === 'habits' ? (
+        <>
+          {/* Overall Summary Stats Grid */}
+          {summary && <SummaryCards summary={summary} />}
+
+          {/* Progress Insights Feed */}
+          {progressInsights.length > 0 && (
+            <div className="print:hidden">
+              <InsightCards insights={progressInsights} />
+            </div>
+          )}
+
+          {/* Recharts Graphs */}
+          <div className="print:break-inside-avoid">
+            <Charts
+              trendData={chartData.weeklyTrend}
+              categoryDistribution={chartData.categoryDistribution}
+              weekdayStats={chartData.weekdayStats}
+            />
           </div>
 
-          {/* Export widget */}
-          <ExportDialog performance={habitPerformance} />
-        </div>
-      </div>
-
-      {/* Overall Summary Stats Grid */}
-      {summary && <SummaryCards summary={summary} />}
-
-      {/* Progress Insights Feed */}
-      {progressInsights.length > 0 && (
-        <div className="print:hidden">
-          <InsightCards insights={progressInsights} />
-        </div>
+          {/* Individual Habits Performance Leaderboard */}
+          <div className="print:break-inside-avoid pt-2">
+            <HabitPerformanceTable performance={habitPerformance} />
+          </div>
+        </>
+      ) : (
+        <WellBeingAnalytics stats={moodStats} trendData={moodTrend} />
       )}
-
-      {/* Recharts Graphs */}
-      <div className="print:break-inside-avoid">
-        <Charts
-          trendData={chartData.weeklyTrend}
-          categoryDistribution={chartData.categoryDistribution}
-          weekdayStats={chartData.weekdayStats}
-        />
-      </div>
-
-      {/* Individual Habits Performance Leaderboard */}
-      <div className="print:break-inside-avoid pt-2">
-        <HabitPerformanceTable performance={habitPerformance} />
-      </div>
     </div>
   )
 }

@@ -3,11 +3,12 @@
 import React from 'react'
 import { format, parseISO } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle2, XCircle, BookOpen, Smile, StickyNote } from 'lucide-react'
+import { X, CheckCircle2, XCircle, BookOpen, PenLine } from 'lucide-react'
 import { DayDetailData } from '../types'
 import { getHabitColor, getHabitIcon } from '@/features/habits/utils/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 interface DayDetailPanelProps {
   date: string
@@ -163,23 +164,73 @@ export function DayDetailPanel({ date, data, isLoading, onClose }: DayDetailPane
                 </section>
               )}
 
-              {/* Placeholders for future phases */}
-              <div className="space-y-3">
-                <PlaceholderCard
-                  icon={<Smile className="h-3.5 w-3.5 text-yellow-500" />}
-                  label="Mood"
-                  placeholder="Mood tracking coming soon"
-                />
-                <PlaceholderCard
-                  icon={<BookOpen className="h-3.5 w-3.5 text-blue-500" />}
-                  label="Journal"
-                  placeholder="Journal feature coming soon"
-                />
-                <PlaceholderCard
-                  icon={<StickyNote className="h-3.5 w-3.5 text-purple-500" />}
-                  label="Notes"
-                  placeholder="Notes feature coming soon"
-                />
+              {/* Journal & Mood Section */}
+              <div className="space-y-3 pt-2 border-t border-border/10">
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5 select-none">
+                  <BookOpen className="h-3.5 w-3.5 text-accent" />
+                  Journal Reflection
+                </h4>
+
+                {data.mood ? (
+                  <div className="space-y-3">
+                    {/* Mood & Details Card */}
+                    <div className="p-3.5 rounded-xl border border-border/40 bg-card select-none">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">
+                          Mood: {
+                            data.mood === 'excellent' ? '😁 Excellent' :
+                            data.mood === 'happy' ? '😊 Happy' :
+                            data.mood === 'neutral' ? '😐 Neutral' :
+                            data.mood === 'sad' ? '😔 Sad' :
+                            data.mood === 'stressed' ? '😣 Stressed' : '😴 Exhausted'
+                          }
+                        </span>
+                        <Link
+                          href={`/dashboard/journal/${data.date}`}
+                          className="text-[10px] font-black text-accent hover:underline flex items-center gap-1"
+                        >
+                          <PenLine className="h-3 w-3" />
+                          Edit
+                        </Link>
+                      </div>
+
+                      {/* Display Tomorrow's Focus / Notes if available */}
+                      {data.notes && (
+                        <div className="mt-2.5 pt-2 border-t border-border/10">
+                          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                            Tomorrow&apos;s Focus
+                          </p>
+                          <p className="text-xs text-muted-foreground italic leading-relaxed">
+                            &ldquo;{data.notes}&rdquo;
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Reflection Text Preview */}
+                    {data.journalEntry && (
+                      <div className="p-3.5 rounded-xl border border-border/40 bg-muted/10">
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-1 select-none">
+                          Notes
+                        </p>
+                        <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line line-clamp-3">
+                          {data.journalEntry}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    href={`/dashboard/journal/${data.date}`}
+                    className="flex flex-col items-center justify-center p-5 rounded-xl border border-dashed border-border/40 bg-muted/5 hover:bg-muted/10 hover:border-accent/40 transition-colors text-center group cursor-pointer"
+                  >
+                    <BookOpen className="h-6 w-6 text-muted-foreground/60 mb-2 group-hover:scale-105 transition-transform" />
+                    <span className="text-xs font-bold text-foreground">No Reflection Logged</span>
+                    <span className="text-[10px] text-muted-foreground/75 mt-1">
+                      Write down your mood and wins for this day
+                    </span>
+                  </Link>
+                )}
               </div>
             </>
           )}
@@ -201,27 +252,7 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
   )
 }
 
-function PlaceholderCard({
-  icon,
-  label,
-  placeholder,
-}: {
-  icon: React.ReactNode
-  label: string
-  placeholder: string
-}) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-border/40 bg-muted/10 opacity-60">
-      <div className="h-7 w-7 rounded-md bg-muted/40 flex items-center justify-center flex-shrink-0">
-        {icon}
-      </div>
-      <div>
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
-        <p className="text-xs text-muted-foreground/60 italic">{placeholder}</p>
-      </div>
-    </div>
-  )
-}
+
 
 function PanelSkeleton() {
   return (

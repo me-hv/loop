@@ -3,6 +3,8 @@ import {
   getDocs,
   query,
   where,
+  doc,
+  getDoc,
 } from 'firebase/firestore'
 import {
   startOfMonth,
@@ -82,11 +84,38 @@ async function fetchCompletionsInRange(
   return list
 }
 
+// Fetches journal dates for a date range
+async function fetchJournalsInRange(
+  userId: string,
+  startDateStr: string,
+  endDateStr: string
+): Promise<string[]> {
+  if (!isInitialized()) return []
+
+  const q = query(
+    collection(firebaseDb!, 'journals'),
+    where('userId', '==', userId),
+    where('date', '>=', startDateStr),
+    where('date', '<=', endDateStr)
+  )
+
+  const snapshot = await getDocs(q)
+  const list: string[] = []
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data()
+    if (data.date) {
+      list.push(data.date)
+    }
+  })
+  return list
+}
+
 // Builds CalendarDayData records from habits + completions for a list of date strings
 function buildDayDataMap(
   dateStrings: string[],
   habits: Habit[],
-  completions: HabitCompletion[]
+  completions: HabitCompletion[],
+  journalDates?: Set<string>
 ): Record<string, CalendarDayData> {
   const map: Record<string, CalendarDayData> = {}
 
@@ -112,6 +141,7 @@ function buildDayDataMap(
       percentage,
       completionIds: dayCompletions.map((c) => c.id),
       hasActivity: dayCompletions.length > 0,
+      hasJournal: journalDates ? journalDates.has(dateStr) : false,
     }
   }
 
@@ -126,16 +156,19 @@ export const calendarService = {
     const startDateStr = format(firstDay, 'yyyy-MM-dd')
     const endDateStr = format(lastDay, 'yyyy-MM-dd')
 
-    const [habits, completions] = await Promise.all([
+    const [habits, completions, journals] = await Promise.all([
       fetchUserHabits(userId),
       fetchCompletionsInRange(userId, startDateStr, endDateStr),
+      fetchJournalsInRange(userId, startDateStr, endDateStr),
     ])
+
+    const journalDates = new Set(journals)
 
     const allDays = eachDayOfInterval({ start: firstDay, end: lastDay }).map((d) =>
       format(d, 'yyyy-MM-dd')
     )
 
-    const days = buildDayDataMap(allDays, habits, completions)
+    const days = buildDayDataMap(allDays, habits, completions, journalDates)
     return { days, year, month }
   },
 
@@ -146,16 +179,19 @@ export const calendarService = {
     const startDateStr = format(weekStart, 'yyyy-MM-dd')
     const endDateStr = format(weekEnd, 'yyyy-MM-dd')
 
-    const [habits, completions] = await Promise.all([
+    const [habits, completions, journals] = await Promise.all([
       fetchUserHabits(userId),
       fetchCompletionsInRange(userId, startDateStr, endDateStr),
+      fetchJournalsInRange(userId, startDateStr, endDateStr),
     ])
+
+    const journalDates = new Set(journals)
 
     const allDays = eachDayOfInterval({ start: weekStart, end: weekEnd }).map((d) =>
       format(d, 'yyyy-MM-dd')
     )
 
-    const days = buildDayDataMap(allDays, habits, completions)
+    const days = buildDayDataMap(allDays, habits, completions, journalDates)
     return { days, startDate: startDateStr, endDate: endDateStr }
   },
 
@@ -163,11 +199,15 @@ export const calendarService = {
   async getDayHistory(userId: string, date: string): Promise<DayDetailData> {
     const dateObj = new Date(date + 'T00:00:00')
     const dayOfWeek = getDay(dateObj)
+    const journalDocId = `${userId}_${date}`
 
-    const [habits, completions] = await Promise.all([
+    const [habits, completions, journalSnap] = await Promise.all([
       fetchUserHabits(userId),
       fetchCompletionsInRange(userId, date, date),
+      getDoc(doc(firebaseDb!, 'journals', journalDocId)),
     ])
+
+    const journalData = journalSnap.exists() ? journalSnap.data() : null
 
     const scheduledHabits = habits.filter(
       (h) => !h.isDeleted && isHabitScheduledOnDay(h, dayOfWeek)
@@ -214,9 +254,9 @@ export const calendarService = {
       completionPercentage,
       totalScheduled,
       totalCompleted,
-      journalEntry: null,
-      mood: null,
-      notes: null,
+      journalEntry: journalData ? journalData.notes : null,
+      mood: journalData ? journalData.mood : null,
+      notes: journalData ? journalData.tomorrowFocus : null,
     }
   },
 
