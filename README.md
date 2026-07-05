@@ -1,4 +1,4 @@
-# Stay in the Loop 🔁
+# Stay in the LOOP 🔁
 
 Loop is a modern, high-performance habit tracking web application designed to help users build consistency through thoughtful UX, premium minimal design, and fluid transitions. Inspired by SaaS products like Linear, Notion, and Stripe, Loop provides a distraction-free space for habit formation.
 
