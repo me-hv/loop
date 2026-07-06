@@ -188,3 +188,35 @@
   --accent: #8B5CF6;
   --ring: #8B5CF6;
 }
+
+/* --- Premium Theme-Aware Custom Scrollbars --- */
+
+/* Firefox Support */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) var(--background);
+}
+
+/* WebKit (Chrome, Safari, Edge) Support */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 9999px;
+  border: 2.5px solid var(--background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--background);
+}

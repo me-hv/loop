@@ -281,11 +281,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer" render={<Link href="/dashboard/profile/progress" />}>
+                <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
                   <User className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer" render={<Link href="/settings/profile" />}>
+                <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
                   <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span>Settings</span>
                 </DropdownMenuItem>
