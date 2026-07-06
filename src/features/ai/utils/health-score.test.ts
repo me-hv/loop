@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { subDays, format } from 'date-fns'
 import { calculateHabitHealth } from './health-score'
 import { Habit } from '@/features/habits/types'
 import { HabitCompletion } from '@/features/tracking/types'
@@ -30,23 +31,25 @@ describe('calculateHabitHealth', () => {
   })
 
   it('should return Excellent status for habits with 100% completion rates and active streaks', () => {
-    // Generate 30 completions
+    // Generate 30 completions relative to today
     const completions: HabitCompletion[] = []
+    const today = new Date()
     for (let i = 0; i < 30; i++) {
-      const day = i + 5
+      const targetDate = subDays(today, i)
+      const dateStr = format(targetDate, 'yyyy-MM-dd')
       completions.push({
         id: `c_${i}`,
         userId: 'user_999',
         habitId: 'habit_123',
-        date: `2026-06-${day < 10 ? '0' + day : day}`,
+        date: dateStr,
         completed: true,
-        completedAt: '2026-06-01T00:00:00Z',
+        completedAt: targetDate.toISOString(),
         goalValue: 1,
-        createdAt: '2026-06-01T00:00:00Z',
+        createdAt: targetDate.toISOString(),
       })
     }
 
-    const health = calculateHabitHealth(dummyHabit, completions, 15)
+    const health = calculateHabitHealth(dummyHabit, completions, 30)
     // Expect high score due to consistency and active streak
     expect(health.score).toBeGreaterThanOrEqual(80)
     expect(health.status).toBe('Excellent')
