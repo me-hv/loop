@@ -36,64 +36,80 @@ service cloud.firestore {
     match /habits/{habitId} {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if request.auth != null &&
-                                     resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null &&
+                     (resource == null || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
     }
 
     // 6. habitCompletions
     match /habitCompletions/{completionId} {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if request.auth != null &&
-                                     resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null &&
+                     (resource == null || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
     }
 
     // 7. journals
     match /journals/{entryId} {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if request.auth != null &&
-                                     resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null &&
+                     (resource == null || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
     }
 
     // 8. reminders
     match /reminders/{reminderId} {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if request.auth != null &&
-                                     resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null &&
+                     (resource == null || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
     }
 
     // 9. notifications
     match /notifications/{notificationId} {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if request.auth != null &&
-                                     resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null &&
+                     (resource == null || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
     }
 
     // 10. aiConversations
     match /aiConversations/{conversationId} {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if request.auth != null &&
-                                     resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null &&
+                     (resource == null || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
     }
 
     // 11. aiSummaries
     match /aiSummaries/{summaryId} {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if request.auth != null &&
-                                     resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null &&
+                     (resource == null || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
     }
 
     // 12. fcmTokens
     match /fcmTokens/{token} {
       allow create: if request.auth != null &&
                        request.resource.data.userId == request.auth.uid;
-      allow read, update, delete: if request.auth != null &&
-                                     resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null &&
+                     (resource == null || resource.data.userId == request.auth.uid);
+      allow update, delete: if request.auth != null &&
+                               resource.data.userId == request.auth.uid;
     }
   }
 }
