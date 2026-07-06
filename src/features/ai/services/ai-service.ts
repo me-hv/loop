@@ -135,7 +135,7 @@ export const aiService = {
       })) as AIConversation[]
     } catch (err) {
       console.error('Error fetching conversations:', err)
-      return []
+      throw err
     }
   },
 

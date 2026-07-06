@@ -102,6 +102,8 @@ export default function AICoachPage() {
     activeConversationId,
     setActiveConversationId,
     conversationsLoading,
+    conversationsError,
+    refetchConversations,
     createConversationAsync,
     deleteConversation,
     renameConversation,
@@ -114,6 +116,7 @@ export default function AICoachPage() {
   const [chatInput, setChatInput] = useState('')
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'recommendations'>('daily')
   const [searchQuery, setSearchQuery] = useState('')
+  const [chatError, setChatError] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -130,6 +133,22 @@ export default function AICoachPage() {
   useEffect(() => {
     scrollToBottom()
   }, [activeConversation?.messages, isSending])
+
+  // Check API Key configuration on mount
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const res = await fetch('/api/ai')
+        const data = await res.json()
+        if (data && data.configured === false) {
+          setApiMissingKey(true)
+        }
+      } catch (err) {
+        console.error('Error checking API key:', err)
+      }
+    }
+    checkApiKey()
+  }, [])
 
   // Calculate current date keys
   const dateKeys = useMemo(() => {
@@ -217,12 +236,12 @@ export default function AICoachPage() {
 
     setChatInput('')
     setApiMissingKey(false)
+    setChatError(null)
 
     try {
       const promptContext = serializeUserContext(contextData)
       
       if (!activeConversation) {
-        // Create new conversation document
         const newId = await createConversationAsync(undefined, 'New Coaching Session')
         await sendMessage({
           conversationId: newId,
@@ -246,8 +265,33 @@ export default function AICoachPage() {
       if (errMessage.includes('API key') || errMessage.includes('missingKey')) {
         setApiMissingKey(true)
       } else {
-        addToast({ message: errMessage, type: 'error' })
+        setChatError(errMessage)
       }
+    }
+  }
+
+  // Handle Retry Send Message
+  const handleRetrySendMessage = async () => {
+    if (!activeConversation || !user) return
+    const messages = activeConversation.messages
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
+    if (!lastUserMsg) return
+
+    const historyWithoutLast = messages.slice(0, -1)
+    setChatError(null)
+
+    try {
+      await sendMessage({
+        conversationId: activeConversation.id,
+        existingMessages: historyWithoutLast,
+        promptContext: serializeUserContext(contextData),
+        newMessage: lastUserMsg.content,
+        currentTitle: activeConversation.title,
+      })
+    } catch (err) {
+      console.error(err)
+      const errMessage = err instanceof Error ? err.message : 'Failed to send message.'
+      setChatError(errMessage)
     }
   }
 
@@ -266,7 +310,25 @@ export default function AICoachPage() {
     if (active.length > 0) {
       setActiveConversationId(active[0].id)
     } else {
-      await handleCreateNewChat()
+      try {
+        const newId = await createConversationAsync(undefined, 'New Coaching Session')
+        setActiveConversationId(newId)
+        
+        // Automatically send opening prompt
+        const promptContext = serializeUserContext(contextData)
+        setChatError(null)
+        await sendMessage({
+          conversationId: newId,
+          existingMessages: [],
+          promptContext,
+          newMessage: 'Analyze my current habits and help me improve.',
+          currentTitle: 'New Coaching Session',
+        })
+      } catch (err) {
+        console.error('Error starting coaching:', err)
+        const errMessage = err instanceof Error ? err.message : 'Failed to start coaching session.'
+        setChatError(errMessage)
+      }
     }
   }
 
@@ -287,7 +349,7 @@ export default function AICoachPage() {
     })
   }, [conversations, searchQuery])
 
-  const isLoading = habitsLoading || completionsLoading || journalsLoading || conversationsLoading
+  const isLoading = habitsLoading || completionsLoading || journalsLoading || (conversationsLoading && !conversationsError)
 
   if (isLoading) {
     return (
@@ -378,7 +440,26 @@ export default function AICoachPage() {
             </div>
 
             <CardContent className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar px-4 pb-4">
-              {filteredConversations.length === 0 ? (
+              {conversationsError ? (
+                <div className="text-center py-6 px-3 border border-dashed border-border/30 rounded-xl bg-muted/10 space-y-2">
+                  <RefreshCw className="h-5 w-5 mx-auto text-accent animate-spin" />
+                  <div className="space-y-0.5">
+                    <h4 className="text-[10px] font-black text-foreground">Preparing conversations...</h4>
+                    <p className="text-[9px] text-muted-foreground leading-normal max-w-[170px] mx-auto">
+                      Firestore composite indexes are currently building. Retrying automatically in a few seconds...
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refetchConversations()}
+                    className="h-6.5 text-[8px] font-black w-full mt-1.5"
+                  >
+                    Retry Now
+                  </Button>
+                </div>
+              ) : filteredConversations.length === 0 ? (
                 searchQuery.trim() ? (
                   <div className="text-center py-6 text-muted-foreground">
                     <MessageSquare className="h-7 w-7 mx-auto opacity-35 mb-1.5" />
@@ -396,7 +477,7 @@ export default function AICoachPage() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={handleCreateNewChat}
+                      onClick={handleStartCoaching}
                       className="h-7 text-[9px] font-black w-full cursor-pointer"
                     >
                       Start Coaching
@@ -590,6 +671,31 @@ export default function AICoachPage() {
                         </div>
                       </div>
                     )}
+                    {chatError && (
+                      <div className="flex items-start gap-3">
+                        <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 border bg-destructive/10 border-destructive/20 text-destructive">
+                          <AlertCircle className="h-4 w-4" />
+                        </div>
+                        <div className="p-3 rounded-2xl border border-destructive/20 bg-destructive/5 text-xs text-destructive max-w-[80%] space-y-2">
+                          <div className="flex items-center gap-1.5 font-bold">
+                            <span>Unable to contact AI Coach.</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-normal">
+                            {chatError}
+                          </p>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={handleRetrySendMessage}
+                            className="h-6 text-[8px] font-black px-2.5 rounded-md flex items-center gap-1 cursor-pointer"
+                          >
+                            <RefreshCw className="h-3 w-3 animate-spin-hover" />
+                            <span>Retry</span>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     <div ref={messagesEndRef} />
                   </CardContent>
 
@@ -715,8 +821,8 @@ export default function AICoachPage() {
                         <Skeleton className="h-4 w-5/6 rounded" />
                       </div>
                     ) : summaries[activeTab] ? (
-                      <div className="whitespace-pre-line text-xs leading-relaxed prose prose-invert max-w-none">
-                        {summaries[activeTab]}
+                      <div className="text-xs leading-relaxed prose prose-invert max-w-none">
+                        <MarkdownRenderer content={summaries[activeTab]} />
                       </div>
                     ) : (
                       <div className="text-center py-10 space-y-4">

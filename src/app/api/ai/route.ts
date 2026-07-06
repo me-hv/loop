@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { buildSystemPrompt } from '@/features/ai/prompts'
-import { AIChatMessage } from '@/features/ai/types'
-import { GoogleGenAI } from '@google/genai'
+import { geminiService } from '@/features/ai/services/ai/gemini'
 
 // Simple in-memory rate-limiter: maps userId -> timestamps of requests
 const rateLimitMap = new Map<string, number[]>()
@@ -58,6 +56,11 @@ function verifyFirebaseToken(authHeader: string | null): string | null {
   }
 }
 
+export async function GET() {
+  const apiKey = process.env.GEMINI_API_KEY
+  return NextResponse.json({ configured: !!apiKey })
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Authenticate using Bearer token
@@ -99,52 +102,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Action is required.' }, { status: 400 })
     }
 
-    // Initialize Google GenAI client
-    const ai = new GoogleGenAI({ apiKey })
-
-    // 5. Construct Gemini system instruction and contents payload
-    let systemInstructionText = buildSystemPrompt()
-    let contents = []
-
-    if (action === 'chat') {
-      // Chat actions inject the user's data context as a system reminder, followed by history
-      systemInstructionText = `${buildSystemPrompt()}\n\nHere is the current user's habits, logs, and streaks data. Use this data as the source of truth for the conversation:\n\n${promptContext}`
-      
-      // Append past chat messages (handling role types and converting assistant -> model)
-      contents = chatHistory.map((msg: AIChatMessage) => ({
-        role: (msg.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-        parts: [{ text: msg.content }]
-      }))
-    } else if (action === 'generate_title') {
-      systemInstructionText = 'You are a title generation tool. Analyze the following conversation exchange and generate a short, descriptive 2-4 word title summarizing the main topic (e.g. "Gym Consistency" or "Morning Routine Audit"). Do NOT include quotes, brackets, or markdown. Output ONLY the title text.'
-      
-      contents = chatHistory.map((msg: AIChatMessage) => ({
-        role: (msg.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-        parts: [{ text: msg.content }]
-      }))
-    } else {
-      // Summaries and reviews append the context and instructions as the single user prompt
-      contents = [
-        {
-          role: 'user' as const,
-          parts: [{ text: promptContext }]
-        }
-      ]
-    }
-
-    // 6. Query Google GenAI SDK using Gemini 2.5 Flash
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents,
-      config: {
-        systemInstruction: {
-          parts: [{ text: systemInstructionText }]
-        },
-        temperature: 0.7
-      }
-    })
-
-    const content = response.text || ''
+    // 5. Query Google GenAI SDK using our modular Gemini Service layer
+    const content = await geminiService.generateContent(action, promptContext, chatHistory)
 
     return NextResponse.json({ result: content })
   } catch (err) {

@@ -8,10 +8,17 @@ export function useAIConversations(userId: string | undefined) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
 
   // 1. Fetch Conversations
-  const { data: conversations = [], isLoading: conversationsLoading } = useQuery({
+  const { 
+    data: conversations = [], 
+    isLoading: conversationsLoading,
+    error: conversationsError,
+    refetch: refetchConversations
+  } = useQuery({
     queryKey: ['aiConversations', userId],
     queryFn: () => aiService.getConversations(userId!),
     enabled: !!userId,
+    retry: true,
+    retryDelay: 5000,
   })
 
   // Find active conversation
@@ -128,6 +135,8 @@ export function useAIConversations(userId: string | undefined) {
     activeConversationId,
     setActiveConversationId,
     conversationsLoading,
+    conversationsError,
+    refetchConversations,
     createConversation: (message?: string, title?: string) =>
       createConversationMutation.mutate({ message, title }),
     createConversationAsync: (message?: string, title?: string) =>
