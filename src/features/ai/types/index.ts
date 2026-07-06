@@ -9,6 +9,7 @@ export interface AIConversation {
   userId: string
   title: string
   messages: AIChatMessage[]
+  isArchived?: boolean
   createdAt: string
   updatedAt: string
 }

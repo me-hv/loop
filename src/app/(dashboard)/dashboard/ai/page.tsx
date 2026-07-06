@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useAuthStore } from '@/store/use-auth-store'
 import { useUIStore } from '@/store/use-ui-store'
 import { useQuery } from '@tanstack/react-query'
@@ -16,6 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { MarkdownRenderer } from '@/components/common/markdown-renderer'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Sparkles,
   Bot,
@@ -32,15 +39,23 @@ import {
   AlertCircle,
   MessageSquare,
   Bookmark,
+  MoreVertical,
+  Edit,
+  Copy,
+  Archive,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format, startOfWeek } from 'date-fns'
 
 const SUGGESTED_QUESTIONS = [
-  'How did I do this week?',
-  'Show my strongest habit.',
-  'Which habit needs attention?',
-  'What patterns do you notice?',
+  'How can I stay consistent?',
+  'Why am I losing motivation?',
+  'Review my habits',
+  'What should I improve?',
+  'Analyze this week',
+  'Help me build discipline',
+  'Give me tomorrow\'s plan',
+  'What habits should I archive?',
 ]
 
 export default function AICoachPage() {
@@ -87,18 +102,34 @@ export default function AICoachPage() {
     activeConversationId,
     setActiveConversationId,
     conversationsLoading,
+    createConversationAsync,
     deleteConversation,
+    renameConversation,
+    duplicateConversation,
+    archiveConversation,
     sendMessage,
     isSending,
   } = useAIConversations(user?.uid)
 
   const [chatInput, setChatInput] = useState('')
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'recommendations'>('daily')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Caching states for summaries
   const [summaries, setSummaries] = useState<Record<string, string>>({})
   const [loadingSummary, setLoadingSummary] = useState(false)
   const [apiMissingKey, setApiMissingKey] = useState(false)
+
+  // Scroll to bottom helper
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [activeConversation?.messages, isSending])
 
   // Calculate current date keys
   const dateKeys = useMemo(() => {
@@ -192,12 +223,13 @@ export default function AICoachPage() {
       
       if (!activeConversation) {
         // Create new conversation document
-        const newId = await aiService.createConversation(user.uid, text)
+        const newId = await createConversationAsync(undefined, 'New Coaching Session')
         await sendMessage({
           conversationId: newId,
           existingMessages: [],
           promptContext,
           newMessage: text,
+          currentTitle: 'New Coaching Session',
         })
       } else {
         await sendMessage({
@@ -205,6 +237,7 @@ export default function AICoachPage() {
           existingMessages: activeConversation.messages,
           promptContext,
           newMessage: text,
+          currentTitle: activeConversation.title,
         })
       }
     } catch (err) {
@@ -218,9 +251,41 @@ export default function AICoachPage() {
     }
   }
 
+  const handleCreateNewChat = async () => {
+    try {
+      const newId = await createConversationAsync(undefined, 'New Coaching Session')
+      setActiveConversationId(newId)
+    } catch (err) {
+      console.error('Error starting new coaching session:', err)
+      addToast({ message: 'Failed to start new coaching session.', type: 'error' })
+    }
+  }
+
+  const handleStartCoaching = async () => {
+    const active = conversations.filter((c) => !c.isArchived)
+    if (active.length > 0) {
+      setActiveConversationId(active[0].id)
+    } else {
+      await handleCreateNewChat()
+    }
+  }
+
   const handleStartNewChat = () => {
     setActiveConversationId(null)
   }
+
+  const filteredConversations = useMemo(() => {
+    const active = conversations.filter((c) => !c.isArchived)
+    if (!searchQuery.trim()) return active
+
+    const query = searchQuery.toLowerCase().trim()
+    return active.filter((c) => {
+      const matchTitle = c.title.toLowerCase().includes(query)
+      const matchContent = c.messages.some((m) => m.content.toLowerCase().includes(query))
+      const matchDate = c.createdAt ? format(new Date(c.createdAt), 'yyyy-MM-dd').includes(query) : false
+      return matchTitle || matchContent || matchDate
+    })
+  }, [conversations, searchQuery])
 
   const isLoading = habitsLoading || completionsLoading || journalsLoading || conversationsLoading
 
@@ -281,8 +346,8 @@ export default function AICoachPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left column: Sidebar past chats */}
         <div className="space-y-4">
-          <Card className="border-border/40 bg-card/60 backdrop-blur-md">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <Card className="border-border/40 bg-card/60 backdrop-blur-md flex flex-col max-h-[420px]">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between shrink-0">
               <div>
                 <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   AI Conversations
@@ -294,21 +359,52 @@ export default function AICoachPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleStartNewChat}
+                onClick={handleCreateNewChat}
                 className="h-7 w-7 rounded-full cursor-pointer hover:bg-muted"
                 aria-label="New chat"
               >
                 <Plus className="h-4 w-4 text-foreground" />
               </Button>
             </CardHeader>
-            <CardContent className="space-y-1.5 max-h-[300px] overflow-y-auto no-scrollbar">
-              {conversations.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <MessageSquare className="h-7 w-7 mx-auto opacity-30 mb-1.5" />
-                  <span className="text-[10px] font-semibold">No past coaching logs.</span>
-                </div>
+
+            <div className="px-4 pb-2.5 shrink-0">
+              <Input
+                type="text"
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 text-[11px] placeholder:text-muted-foreground/45 border-border/30 rounded-lg"
+              />
+            </div>
+
+            <CardContent className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar px-4 pb-4">
+              {filteredConversations.length === 0 ? (
+                searchQuery.trim() ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <MessageSquare className="h-7 w-7 mx-auto opacity-35 mb-1.5" />
+                    <span className="text-[10px] font-bold">No search results found.</span>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 px-3 border border-dashed border-border/30 rounded-xl space-y-2.5">
+                    <Bot className="h-7 w-7 mx-auto text-accent animate-pulse" />
+                    <div className="space-y-0.5">
+                      <h4 className="text-[10px] font-black text-foreground">Start your first session</h4>
+                      <p className="text-[9px] text-muted-foreground leading-relaxed max-w-[170px] mx-auto">
+                        Your AI Coach will analyze your habits, identify patterns, and help you improve every day.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleCreateNewChat}
+                      className="h-7 text-[9px] font-black w-full cursor-pointer"
+                    >
+                      Start Coaching
+                    </Button>
+                  </div>
+                )
               ) : (
-                conversations.map((c) => {
+                filteredConversations.map((c) => {
                   const isActive = activeConversationId === c.id
                   return (
                     <div
@@ -322,19 +418,66 @@ export default function AICoachPage() {
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <Bookmark className="h-3.5 w-3.5 shrink-0" />
-                        <span className="text-[11px] font-bold truncate max-w-[140px]">{c.title}</span>
+                        <span className="text-[11px] font-bold truncate max-w-[130px]">{c.title}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteConversation(c.id)
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded transition-all cursor-pointer"
-                        aria-label="Delete chat"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded transition-all cursor-pointer focus:outline-none"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label="Conversation actions"
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32" sideOffset={4}>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const newTitle = window.prompt('Rename Conversation', c.title)
+                              if (newTitle && newTitle.trim()) {
+                                renameConversation({ id: c.id, title: newTitle.trim() })
+                              }
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 cursor-pointer text-[10px] font-bold"
+                          >
+                            <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Rename</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              duplicateConversation(c.id)
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 cursor-pointer text-[10px] font-bold"
+                          >
+                            <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Duplicate</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              archiveConversation(c.id)
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 cursor-pointer text-[10px] font-bold"
+                          >
+                            <Archive className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Archive</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const confirmDelete = window.confirm('Are you sure you want to delete this conversation?')
+                              if (confirmDelete) {
+                                deleteConversation(c.id)
+                              }
+                            }}
+                            className="flex items-center gap-2 px-2 py-1.5 cursor-pointer text-[10px] font-bold text-destructive focus:text-destructive focus:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Delete</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )
                 })
@@ -403,7 +546,7 @@ export default function AICoachPage() {
                   </CardHeader>
                   
                   {/* Chat Timeline message content */}
-                  <CardContent className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+                  <CardContent className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
                     {activeConversation?.messages.map((m, idx) => {
                       const isAi = m.role === 'assistant'
                       return (
@@ -414,7 +557,7 @@ export default function AICoachPage() {
                           <div
                             className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 border ${
                               isAi
-                                ? 'bg-accent/15 border-accent/20 text-accent'
+                                ? 'bg-accent/15 border-accent/20 text-accent animate-in zoom-in-50 duration-200'
                                 : 'bg-muted/80 border-border/40 text-muted-foreground'
                             }`}
                           >
@@ -428,10 +571,7 @@ export default function AICoachPage() {
                                 : 'bg-accent/10 border-accent/20 text-foreground font-semibold'
                             }`}
                           >
-                            {/* Simple render markdown blocks */}
-                            <div className="whitespace-pre-line prose prose-invert max-w-none">
-                              {m.content}
-                            </div>
+                            <MarkdownRenderer content={m.content} />
                           </div>
                         </div>
                       )
@@ -450,17 +590,18 @@ export default function AICoachPage() {
                         </div>
                       </div>
                     )}
+                    <div ref={messagesEndRef} />
                   </CardContent>
 
                   {/* Suggestion Prompts */}
-                  {activeConversation?.messages.length === 0 && (
-                    <div className="px-4 pb-2 pt-1 border-t border-border/5 flex flex-wrap gap-1.5 shrink-0">
+                  {(!activeConversation || activeConversation.messages.length === 0) && (
+                    <div className="px-4 pb-2 pt-1 border-t border-border/5 flex flex-wrap gap-1.5 shrink-0 justify-center">
                       {SUGGESTED_QUESTIONS.map((q) => (
                         <button
                           key={q}
                           type="button"
                           onClick={() => handleSendChatMessage(q)}
-                          className="px-2.5 py-1 rounded-full border border-border/30 hover:border-accent bg-muted/40 hover:bg-accent/5 text-[10px] font-bold text-muted-foreground hover:text-accent transition-all cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-full border border-border/30 hover:border-accent bg-muted/40 hover:bg-accent/5 text-[10px] font-bold text-muted-foreground hover:text-accent transition-all cursor-pointer select-none"
                         >
                           {q}
                         </button>
@@ -470,21 +611,26 @@ export default function AICoachPage() {
 
                   {/* Chat inputs footer */}
                   <div className="p-4 border-t border-border/10 bg-muted/20 shrink-0 flex items-center gap-2">
-                    <Input
-                      type="text"
-                      placeholder="Ask the coach (e.g. 'Why am I skipping workouts?')"
+                    <textarea
+                      placeholder="Ask your AI Coach..."
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          handleSendChatMessage()
+                        }
+                      }}
                       disabled={isSending}
-                      className="text-xs h-9"
+                      rows={1}
+                      className="flex-1 min-h-[38px] max-h-32 resize-none bg-background border border-border/30 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-accent/40 text-foreground custom-scrollbar"
                     />
                     <Button
                       type="button"
                       size="icon"
                       onClick={() => handleSendChatMessage()}
                       disabled={isSending || !chatInput.trim()}
-                      className="h-9 w-9 shrink-0 cursor-pointer"
+                      className="h-9.5 w-9.5 shrink-0 cursor-pointer rounded-xl flex items-center justify-center"
                       aria-label="Send message"
                     >
                       <Send className="h-4 w-4" />
@@ -655,7 +801,7 @@ export default function AICoachPage() {
                       </p>
                       <Button
                         type="button"
-                        onClick={handleStartNewChat}
+                        onClick={handleStartCoaching}
                         className="h-9 text-xs font-bold cursor-pointer mx-auto flex items-center gap-1.5"
                       >
                         <MessageSquare className="h-4 w-4" /> Start Coaching Session

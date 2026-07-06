@@ -139,19 +139,31 @@ export const aiService = {
     }
   },
 
-  async createConversation(userId: string, firstMessageContent: string): Promise<string> {
+  async createConversation(
+    userId: string,
+    firstMessageContent?: string,
+    customTitle?: string
+  ): Promise<string> {
     const db = firebaseDb!
-    const initialUserMsg: AIChatMessage = {
-      role: 'user',
-      content: firstMessageContent,
-      createdAt: new Date().toISOString(),
+    const messages: AIChatMessage[] = []
+    
+    if (firstMessageContent) {
+      messages.push({
+        role: 'user',
+        content: firstMessageContent,
+        createdAt: new Date().toISOString(),
+      })
     }
     
-    const title = firstMessageContent.substring(0, 30) + (firstMessageContent.length > 30 ? '...' : '')
+    const title = customTitle || (firstMessageContent
+      ? (firstMessageContent.substring(0, 30) + (firstMessageContent.length > 30 ? '...' : ''))
+      : 'New Coaching Session')
+
     const payload = {
       userId,
       title,
-      messages: [initialUserMsg],
+      messages,
+      isArchived: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -174,13 +186,17 @@ export const aiService = {
 
   async addMessageToConversation(
     conversationId: string,
-    updatedMessages: AIChatMessage[]
+    updatedMessages: AIChatMessage[],
+    newTitle?: string
   ): Promise<void> {
     const db = firebaseDb!
     const docRef = doc(db, 'aiConversations', conversationId)
-    const payload = {
+    const payload: Partial<Omit<AIConversation, 'id'>> = {
       messages: updatedMessages,
       updatedAt: new Date().toISOString(),
+    }
+    if (newTitle) {
+      payload.title = newTitle
     }
 
     try {
@@ -195,6 +211,89 @@ export const aiService = {
       )
     } catch (err) {
       console.error('Error adding message to conversation:', err)
+      throw err
+    }
+  },
+
+  async renameConversation(conversationId: string, newTitle: string): Promise<void> {
+    const db = firebaseDb!
+    const docRef = doc(db, 'aiConversations', conversationId)
+    const payload = {
+      title: newTitle,
+      updatedAt: new Date().toISOString(),
+    }
+    try {
+      await runWithFirestoreLogger(
+        {
+          operation: 'updateDoc',
+          collection: 'aiConversations',
+          path: docRef.path,
+          payload,
+        },
+        () => updateDoc(docRef, payload)
+      )
+    } catch (err) {
+      console.error('Error renaming conversation:', err)
+      throw err
+    }
+  },
+
+  async duplicateConversation(userId: string, conversationId: string): Promise<string> {
+    const db = firebaseDb!
+    const docRef = doc(db, 'aiConversations', conversationId)
+    try {
+      const docSnap = await runWithFirestoreLogger(
+        {
+          operation: 'getDoc',
+          collection: 'aiConversations',
+          path: docRef.path,
+        },
+        () => getDoc(docRef)
+      )
+      if (!docSnap.exists()) throw new Error('Conversation not found')
+      const data = docSnap.data()
+      const payload = {
+        userId,
+        title: `Copy of ${data.title}`,
+        messages: data.messages || [],
+        isArchived: data.isArchived || false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      const newDocRef = await runWithFirestoreLogger(
+        {
+          operation: 'addDoc',
+          collection: 'aiConversations',
+          payload,
+        },
+        () => addDoc(collection(db, 'aiConversations'), payload)
+      )
+      return newDocRef.id
+    } catch (err) {
+      console.error('Error duplicating conversation:', err)
+      throw err
+    }
+  },
+
+  async archiveConversation(conversationId: string): Promise<void> {
+    const db = firebaseDb!
+    const docRef = doc(db, 'aiConversations', conversationId)
+    const payload = {
+      isArchived: true,
+      updatedAt: new Date().toISOString(),
+    }
+    try {
+      await runWithFirestoreLogger(
+        {
+          operation: 'updateDoc',
+          collection: 'aiConversations',
+          path: docRef.path,
+          payload,
+        },
+        () => updateDoc(docRef, payload)
+      )
+    } catch (err) {
+      console.error('Error archiving conversation:', err)
       throw err
     }
   },

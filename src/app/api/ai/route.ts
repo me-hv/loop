@@ -115,6 +115,13 @@ export async function POST(request: Request) {
         role: (msg.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
         parts: [{ text: msg.content }]
       }))
+    } else if (action === 'generate_title') {
+      systemInstructionText = 'You are a title generation tool. Analyze the following conversation exchange and generate a short, descriptive 2-4 word title summarizing the main topic (e.g. "Gym Consistency" or "Morning Routine Audit"). Do NOT include quotes, brackets, or markdown. Output ONLY the title text.'
+      
+      contents = chatHistory.map((msg: AIChatMessage) => ({
+        role: (msg.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
+        parts: [{ text: msg.content }]
+      }))
     } else {
       // Summaries and reviews append the context and instructions as the single user prompt
       contents = [
