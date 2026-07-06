@@ -226,24 +226,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative print:h-auto print:overflow-visible">
         {/* Top Navbar */}
-        <header className="h-16 border-b border-border bg-card/60 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between relative z-10 print:hidden">
+        <header className="h-16 md:h-20 border-b border-border bg-card/60 backdrop-blur-md px-4 sm:px-6 md:px-8 flex items-center justify-between relative z-10 print:hidden transition-all duration-300">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleMobileMenu}
-              className="md:hidden h-9 w-9 rounded-md cursor-pointer hover:bg-muted"
+              className="md:hidden h-10 w-10 rounded-md cursor-pointer hover:bg-muted flex items-center justify-center"
               aria-label="Toggle mobile menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
             {/* Dynamic Breadcrumbs */}
-            <div className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1.5 select-none">
+            <div className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2 select-none">
               {getBreadcrumbs().map((b, idx) => (
                 <React.Fragment key={idx}>
-                  {idx > 0 && <span className="text-muted-foreground/40">/</span>}
+                  {idx > 0 && <span className="text-muted-foreground/30">/</span>}
                   {b.isLast ? (
-                    <span className="text-foreground font-semibold">{b.name}</span>
+                    <span className="text-foreground font-semibold tracking-tight">{b.name}</span>
                   ) : (
                     <Link href={b.href} className="hover:text-foreground transition-colors">
                       {b.name}
@@ -254,26 +254,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3.5 md:gap-5">
             {/* Quick Search UI Trigger (Placeholder) */}
-            <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-muted/40 hover:bg-muted/65 transition-colors text-xs text-muted-foreground w-40 cursor-pointer select-none">
-              <Search className="h-3.5 w-3.5" />
-              <span>Search...</span>
-              <kbd className="ml-auto font-sans text-[9px] bg-card px-1.5 py-0.5 rounded border border-border">
+            <div className="hidden md:flex items-center gap-2.5 h-10 w-52 md:w-60 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-border/80 transition-all duration-200 text-sm text-muted-foreground/80 cursor-pointer select-none">
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+              <span className="text-xs font-medium">Search...</span>
+              <kbd className="ml-auto font-sans text-[10px] font-medium bg-card px-2 py-0.5 rounded border border-border shadow-xs text-muted-foreground/75">
                 ⌘K
               </kbd>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+            </div>
             <DropdownMenu>
-              <DropdownMenuTrigger className="relative h-9 w-9 rounded-full cursor-pointer flex items-center justify-center hover:bg-muted/80 transition-colors focus:outline-none">
-                <Avatar className="h-9 w-9">
+              <DropdownMenuTrigger className="relative h-10 w-10 md:h-11 md:w-11 rounded-full cursor-pointer flex items-center justify-center hover:bg-muted/80 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none">
+                <Avatar className="h-10 w-10 md:h-11 md:w-11 border border-border/10">
                   <AvatarImage src={user.photoURL ?? ''} />
-                  <AvatarFallback className="bg-accent/15 text-accent text-sm font-semibold">
+                  <AvatarFallback className="bg-accent/15 text-accent text-sm font-bold">
                     {user.displayName?.substring(0, 2).toUpperCase() ?? 'US'}
                   </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
+              <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-semibold leading-none">{user.displayName ?? 'User'}</p>

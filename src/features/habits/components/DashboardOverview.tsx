@@ -10,14 +10,13 @@ import {
   useHabitCompletionMutation,
   useHabitProgress,
 } from '@/features/tracking/hooks/use-tracking'
-import { getHabitColor, getHabitIcon } from '@/features/habits/utils/icons'
 import { DailyProgressRing } from '@/features/tracking/components/DailyProgressRing'
 import { RecentActivityList } from '@/features/tracking/components/RecentActivityList'
+import { TodayHabitCard } from '@/features/tracking/components/TodayHabitCard'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import {
-  Check,
   Plus,
   Flame,
   Zap,
@@ -25,10 +24,9 @@ import {
   TrendingUp,
   Inbox,
   Calendar,
-  Loader2,
   Trophy,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 export function DashboardOverview() {
@@ -96,25 +94,25 @@ export function DashboardOverview() {
   // 4. Loading Skeleton View
   if (isLoading) {
     return (
-      <div className="space-y-8 max-w-6xl mx-auto select-none">
+      <div className="space-y-6 max-w-6xl mx-auto select-none">
         <div className="space-y-2">
           <div className="h-8 bg-muted/40 rounded w-1/3 animate-pulse" />
           <div className="h-4 bg-muted/40 rounded w-1/4 animate-pulse" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 bg-muted/10 border border-border/40 rounded-xl animate-pulse p-4 space-y-3">
+            <div key={i} className="h-24 bg-muted/10 border border-border/40 rounded-xl animate-pulse p-4 space-y-2">
               <div className="h-4 bg-muted/30 rounded w-1/2" />
               <div className="h-7 bg-muted/30 rounded w-1/3" />
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <div className="h-6 bg-muted/40 rounded w-1/4 animate-pulse" />
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 bg-muted/10 border border-border/40 rounded-lg animate-pulse" />
+                <div key={i} className="h-[74px] bg-muted/10 border border-border/40 rounded-xl animate-pulse" />
               ))}
             </div>
           </div>
@@ -125,7 +123,7 @@ export function DashboardOverview() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto select-none">
+    <div className="space-y-6 max-w-6xl mx-auto select-none">
       {/* Greetings Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -153,13 +151,13 @@ export function DashboardOverview() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Progress Percentage Card */}
         <Card className="border-border/55 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1.5">
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Today&apos;s Progress
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-accent" />
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-4 pt-0 space-y-2">
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-bold">{progressPercentage}%</span>
               <span className="text-xs text-muted-foreground">
@@ -172,29 +170,29 @@ export function DashboardOverview() {
 
         {/* Current Active Streak Card */}
         <Card className="border-border/55 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1.5">
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Current Active Streak
             </CardTitle>
             <Flame className="h-4 w-4 text-orange-500 fill-orange-500/10" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="text-2xl font-bold">{currentActiveStreak} days</div>
-            <p className="text-[10px] text-muted-foreground mt-1">Consecutive days completed</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Consecutive days completed</p>
           </CardContent>
         </Card>
 
         {/* Longest Active Streak Card */}
         <Card className="border-border/55 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1.5">
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Longest Active Streak
             </CardTitle>
             <Trophy className="h-4 w-4 text-yellow-500" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="text-2xl font-bold">{longestActiveStreak} days</div>
-            <p className="text-[10px] text-muted-foreground mt-1">All-time record consistency</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">All-time record consistency</p>
           </CardContent>
         </Card>
       </div>
@@ -216,7 +214,7 @@ export function DashboardOverview() {
           </Link>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Today's Checklist Checklist */}
           <div className="lg:col-span-2 space-y-4">
             <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -231,83 +229,16 @@ export function DashboardOverview() {
                 {habits.map((habit, index) => {
                   const isCompleted = completions.some((c) => c.habitId === habit.id)
                   const isPending = toggleMutation.isPending && toggleMutation.variables?.habitId === habit.id
-                  const IconComponent = getHabitIcon(habit.icon)
-                  const colorPreset = getHabitColor(habit.color)
 
                   return (
-                    <motion.div
+                    <TodayHabitCard
                       key={habit.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: index * 0.04 }}
-                    >
-                      <Card
-                        className={cn(
-                          'border-border/50 hover:border-border/90 transition-all duration-300 relative group overflow-hidden',
-                          isCompleted ? 'bg-muted/30 dark:bg-muted/10' : 'bg-card'
-                        )}
-                      >
-                        <CardContent className="p-4 flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3.5 min-w-0">
-                            {/* Complete Checkbox Button */}
-                            <button
-                              type="button"
-                              disabled={isPending}
-                              onClick={() => handleToggleComplete(habit.id, isCompleted, habit.goal, habit.title)}
-                              className={cn(
-                                'h-9 w-9 rounded-full border flex items-center justify-center cursor-pointer transition-all duration-300 shrink-0 relative focus:outline-none disabled:opacity-70',
-                                isCompleted
-                                  ? 'bg-success hover:bg-success/95 border-transparent text-white scale-95 shadow-sm'
-                                  : 'border-muted-foreground/30 hover:border-accent hover:bg-accent/15 hover:text-accent'
-                              )}
-                            >
-                              {isPending ? (
-                                <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                              ) : isCompleted ? (
-                                <Check className="h-5 w-5 stroke-[3px]" />
-                              ) : (
-                                <Plus className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                              )}
-                            </button>
-
-                            <div className="min-w-0">
-                              <h3
-                                className={cn(
-                                  'font-sans font-bold text-sm truncate transition-all duration-300',
-                                  isCompleted
-                                    ? 'line-through text-muted-foreground/60'
-                                    : 'text-foreground group-hover:text-accent'
-                                )}
-                              >
-                                {habit.title}
-                              </h3>
-                              <p className="text-xs text-muted-foreground truncate pt-0.5">
-                                Goal: {habit.goal} {habit.unit.toLowerCase()} • {habit.frequency.toLowerCase()}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Category Icon and Streaks info */}
-                          <div className="flex items-center gap-4 shrink-0 select-none">
-                            {/* Flame Streak count */}
-                            {(habit.currentStreak ?? 0) > 0 && (
-                              <div className="flex items-center gap-1 text-xs font-bold text-orange-500">
-                                <Flame className="h-4 w-4" />
-                                <span>{habit.currentStreak}</span>
-                              </div>
-                            )}
-
-                            <div className={cn('p-1.5 rounded-md border text-center scale-90', colorPreset.bgClass, colorPreset.borderClass, colorPreset.textClass)}>
-                              {React.createElement(IconComponent, { className: 'h-3.5 w-3.5' })}
-                            </div>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider hidden sm:inline">
-                              {habit.category}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
+                      habit={habit}
+                      isCompleted={isCompleted}
+                      isPending={isPending}
+                      onToggle={() => handleToggleComplete(habit.id, isCompleted, habit.goal, habit.title)}
+                      index={index}
+                    />
                   )
                 })}
               </AnimatePresence>
@@ -318,15 +249,15 @@ export function DashboardOverview() {
           <div className="space-y-6">
             {/* Progress Circular Visual */}
             <Card className="border-border/50 bg-card overflow-hidden">
-              <CardHeader className="pb-3 border-b border-border/40 bg-muted/10">
+              <CardHeader className="px-4.5 py-3 border-b border-border/40 bg-muted/10">
                 <CardTitle className="text-sm font-bold flex items-center gap-2 select-none">
                   <Target className="h-4 w-4 text-accent" />
                   Visual Daily Progress
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
-                <DailyProgressRing percentage={progressPercentage} size={110} />
-                <div className="grid grid-cols-2 gap-4 w-full pt-3 border-t border-border/30 text-center text-xs">
+              <CardContent className="px-4.5 py-4 flex flex-col items-center justify-center space-y-3">
+                <DailyProgressRing percentage={progressPercentage} size={96} />
+                <div className="grid grid-cols-2 gap-4 w-full pt-2.5 border-t border-border/30 text-center text-xs">
                   <div>
                     <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider">Completed</span>
                     <span className="text-base font-extrabold text-success mt-0.5 block">{completedCount}</span>
@@ -339,15 +270,15 @@ export function DashboardOverview() {
               </CardContent>
             </Card>
 
-            {/* Recent Activitytimeline */}
+            {/* Recent Activity timeline */}
             <Card className="border-border/50 bg-card overflow-hidden">
-              <CardHeader className="pb-3 border-b border-border/40 bg-muted/10">
+              <CardHeader className="px-4.5 py-3 border-b border-border/40 bg-muted/10">
                 <CardTitle className="text-sm font-bold flex items-center gap-2 select-none">
                   <Zap className="h-4 w-4 text-accent animate-pulse" />
                   Recent Activity
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-5">
+              <CardContent className="px-4.5 py-3">
                 <RecentActivityList />
               </CardContent>
             </Card>
