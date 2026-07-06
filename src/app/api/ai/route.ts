@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { buildSystemPrompt } from '@/features/ai/prompts'
 import { AIChatMessage } from '@/features/ai/types'
+import { GoogleGenAI } from '@google/genai'
 
 // Simple in-memory rate-limiter: maps userId -> timestamps of requests
 const rateLimitMap = new Map<string, number[]>()
@@ -78,12 +79,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // 3. Verify OpenAI key
-    const apiKey = process.env.OPENAI_API_KEY
+    // 3. Verify Gemini key
+    const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
       return NextResponse.json(
         {
-          error: 'OpenAI API key is missing. Please add OPENAI_API_KEY to your .env.local file.',
+          error: 'Gemini API key is missing. Please add GEMINI_API_KEY to your environment variables.',
           missingKey: true
         },
         { status: 400 }
@@ -98,56 +99,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Action is required.' }, { status: 400 })
     }
 
-    // 5. Construct OpenAI messages payload
-    const messages = []
-    messages.push({ role: 'system', content: buildSystemPrompt() })
+    // Initialize Google GenAI client
+    const ai = new GoogleGenAI({ apiKey })
+
+    // 5. Construct Gemini system instruction and contents payload
+    let systemInstructionText = buildSystemPrompt()
+    let contents = []
 
     if (action === 'chat') {
       // Chat actions inject the user's data context as a system reminder, followed by history
-      messages.push({
-        role: 'system',
-        content: `Here is the current user's habits, logs, and streaks data. Use this data as the source of truth for the conversation:\n\n${promptContext}`
-      })
-      // Append past chat messages (handling role types)
-      chatHistory.forEach((msg: AIChatMessage) => {
-        messages.push({
-          role: msg.role,
-          content: msg.content
-        })
-      })
+      systemInstructionText = `${buildSystemPrompt()}\n\nHere is the current user's habits, logs, and streaks data. Use this data as the source of truth for the conversation:\n\n${promptContext}`
+      
+      // Append past chat messages (handling role types and converting assistant -> model)
+      contents = chatHistory.map((msg: AIChatMessage) => ({
+        role: (msg.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
+        parts: [{ text: msg.content }]
+      }))
     } else {
       // Summaries and reviews append the context and instructions as the single user prompt
-      messages.push({
-        role: 'user',
-        content: promptContext
-      })
+      contents = [
+        {
+          role: 'user' as const,
+          parts: [{ text: promptContext }]
+        }
+      ]
     }
 
-    // 6. Query OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages,
+    // 6. Query Google GenAI SDK using Gemini 2.5 Flash
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents,
+      config: {
+        systemInstruction: {
+          parts: [{ text: systemInstructionText }]
+        },
         temperature: 0.7
-      })
+      }
     })
 
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error('OpenAI Request Failed:', errText)
-      return NextResponse.json(
-        { error: `AI service provider failure: ${response.statusText}` },
-        { status: response.status }
-      )
-    }
-
-    const resJson = await response.json()
-    const content = resJson.choices?.[0]?.message?.content || ''
+    const content = response.text || ''
 
     return NextResponse.json({ result: content })
   } catch (err) {

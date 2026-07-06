@@ -241,15 +241,15 @@ export default function AICoachPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 select-none relative">
-      {/* OpenAI API Key Missing Alert */}
+      {/* Gemini API Key Missing Alert */}
       {apiMissingKey && (
         <Card className="border-destructive/30 bg-destructive/5 text-destructive p-5 flex items-start gap-4">
           <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <h4 className="text-xs font-black uppercase tracking-wider">OpenAI API Key Required</h4>
+            <h4 className="text-xs font-black uppercase tracking-wider">Gemini API Key Required</h4>
             <p className="text-[11px] leading-normal text-muted-foreground max-w-2xl">
-              To enable AI Coaching summaries and interactive chats, you must add an OpenAI API key.
-              Create/update `OPENAI_API_KEY=your_key` in your <code className="bg-destructive/10 px-1 rounded">.env.local</code> file in the project root and restart the Next.js development server.
+              To enable AI Coaching summaries and interactive chats, you must add a Gemini API key.
+              Create/update `GEMINI_API_KEY=your_key` in your <code className="bg-destructive/10 px-1 rounded">.env.local</code> file in the project root and restart the Next.js development server.
             </p>
           </div>
         </Card>
