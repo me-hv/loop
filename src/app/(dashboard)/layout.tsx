@@ -27,7 +27,6 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
-  Search,
   CheckSquare,
   CalendarDays,
   BookOpen,
@@ -38,6 +37,7 @@ import {
 import { cn } from '@/lib/utils'
 import { NotificationBadge } from '@/features/notifications/components/NotificationBadge'
 import { useSettings, useTheme } from '@/features/settings/hooks/use-settings'
+import { GlobalSearch } from '@/components/GlobalSearch'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -255,14 +255,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3.5 md:gap-5">
-            {/* Quick Search UI Trigger (Placeholder) */}
-            <div className="hidden md:flex items-center gap-2.5 h-10 w-52 md:w-60 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-border/80 transition-all duration-200 text-sm text-muted-foreground/80 cursor-pointer select-none">
-              <Search className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-              <span className="text-xs font-medium">Search...</span>
-              <kbd className="ml-auto font-sans text-[10px] font-medium bg-card px-2 py-0.5 rounded border border-border shadow-xs text-muted-foreground/75">
-                ⌘K
-              </kbd>
-            </div>
+            <GlobalSearch userId={user.uid} />
             <div className="flex items-center gap-1">
               <ThemeToggle />
             </div>
