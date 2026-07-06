@@ -39,7 +39,7 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (resource == null || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+                               (resource == null || resource.data.userId == request.auth.uid);
     }
 
     // 6. habitCompletions
@@ -49,7 +49,7 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (resource == null || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+                               (resource == null || resource.data.userId == request.auth.uid);
     }
 
     // 7. journals
@@ -59,7 +59,7 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (resource == null || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+                               (resource == null || resource.data.userId == request.auth.uid);
     }
 
     // 8. reminders
@@ -69,7 +69,7 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (resource == null || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+                               (resource == null || resource.data.userId == request.auth.uid);
     }
 
     // 9. notifications
@@ -79,7 +79,7 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (resource == null || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+                               (resource == null || resource.data.userId == request.auth.uid);
     }
 
     // 10. aiConversations
@@ -89,7 +89,7 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (resource == null || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+                               (resource == null || resource.data.userId == request.auth.uid);
     }
 
     // 11. aiSummaries
@@ -99,7 +99,7 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (resource == null || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+                               (resource == null || resource.data.userId == request.auth.uid);
     }
 
     // 12. fcmTokens
@@ -109,7 +109,7 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      (resource == null || resource.data.userId == request.auth.uid);
       allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
+                               (resource == null || resource.data.userId == request.auth.uid);
     }
   }
 }
